@@ -1,4 +1,4 @@
-# SignalLens for LinkedIn & X
+# SignalLens for LinkedIn & X on the web
 
 > A local-first signal filter for professional and technical social feeds.
 
@@ -17,7 +17,7 @@ SignalLens helps you spend less time on vague AI hype and more time on posts wit
 
 ## What it does
 
-- Scores visible posts locally as they enter your LinkedIn or X feed.
+- Scores visible posts locally as they enter your LinkedIn or X feed, with independent per-site filtering controls.
 - Supports a second opinion from **Ollama, LM Studio, Jan, OpenAI, Anthropic**, or another OpenAI-compatible endpoint.
 - Lets you mark posts as **👍 Useful**, **😐 Mixed**, or **👎 Low signal**.
 - Learns from new labels with a compact three-class preference model stored in Chrome.

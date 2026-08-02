@@ -13,6 +13,8 @@
   const countedAssessments = new Set();
   const liveBadges = new WeakSet();
   let enabled = true;
+  let linkedInEnabled = true;
+  let xEnabled = true;
   let interestTopics = [];
   let sensitivity = 0;
 
@@ -64,7 +66,7 @@
     if (document.querySelector("#signal-filter-panel")) return;
     const panel = document.createElement("aside");
     panel.id = "signal-filter-panel";
-    panel.innerHTML = `<header><span class="signal-filter-panel-grip">⋮⋮</span><strong>SignalLens</strong><span class="signal-filter-panel-local">Local</span><button type="button" aria-label="Minimize panel">−</button></header><section><p class="signal-filter-panel-kicker">Your LinkedIn signal dashboard</p><div class="signal-filter-panel-metrics"><div><b data-dashboard="assessed">0</b><span>assessed</span></div><div><b data-dashboard="filtered">0</b><span>filtered</span></div></div><p class="signal-filter-panel-labels" data-dashboard="labels">0 useful · 0 mixed · 0 low signal</p><p class="signal-filter-panel-help">Drag the header to move. Drag the lower-right corner to resize.</p></section>`;
+    panel.innerHTML = `<header><span class="signal-filter-panel-grip">⋮⋮</span><strong>SignalLens</strong><span class="signal-filter-panel-local">Local</span><button type="button" aria-label="Minimize panel">−</button></header><section><p class="signal-filter-panel-kicker">Your SignalLens dashboard</p><div class="signal-filter-panel-metrics"><div><b data-dashboard="assessed">0</b><span>assessed</span></div><div><b data-dashboard="filtered">0</b><span>filtered</span></div></div><p class="signal-filter-panel-labels" data-dashboard="labels">0 useful · 0 mixed · 0 low signal</p><p class="signal-filter-panel-help">Drag the header to move. Drag the lower-right corner to resize.</p></section>`;
     const launcher = document.createElement("button");
     launcher.id = "signal-filter-launcher";
     launcher.type = "button";
@@ -397,13 +399,13 @@
   }
 
   function inspect(post) {
-    if (!enabled) return;
+    const isXPost = post.matches("article[data-testid='tweet']");
+    if (!enabled || (isXPost ? !xEnabled : !linkedInEnabled)) return;
     // X virtualizes its timeline and may reuse an existing article for a
     // different tweet. Reprocess only when its underlying content changes.
     const cleanPost = post.cloneNode(true);
     cleanPost.querySelectorAll(".signal-filter-badge, .signal-filter-notice, .signal-filter-bookmark-controls").forEach((element) => element.remove());
     const text = (cleanPost.innerText || cleanPost.textContent || "").trim();
-    const isXPost = post.matches("article[data-testid='tweet']");
     // Engagement counts change continuously on X. Identify a tweet by its stable
     // permalink and post text so those updates do not recreate its controls.
     const xPermalink = isXPost
@@ -447,6 +449,7 @@
   }
 
   function scan(root = document) {
+    if (!enabled || (location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com") ? !xEnabled : !linkedInEnabled)) return;
     // Mutation callbacks can hand us the post card itself rather than its
     // parent. querySelectorAll only searches descendants, so inspect the root
     // before looking through its children.
@@ -504,10 +507,22 @@
   }
 
   addStatus();
-  scan();
-  chrome.storage.local.get({ enabled: true }, ({ enabled: saved }) => {
+  function clearCurrentSite() {
+    document.querySelectorAll(`.${HIDDEN}`).forEach((post) => post.classList.remove(HIDDEN));
+    document.querySelectorAll(".signal-filter-notice, .signal-filter-badge, .signal-filter-bookmark-controls").forEach((element) => element.remove());
+    document.querySelectorAll("[data-signal-filter-processed]").forEach((post) => delete post.dataset[PROCESSED]);
+  }
+
+  function isCurrentSiteEnabled() {
+    return location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com") ? xEnabled : linkedInEnabled;
+  }
+
+  chrome.storage.local.get({ enabled: true, linkedInEnabled: true, xEnabled: true }, (settings) => {
+    const saved = settings.enabled;
     enabled = saved;
-    if (enabled) scan();
+    linkedInEnabled = settings.linkedInEnabled;
+    xEnabled = settings.xEnabled;
+    if (enabled && isCurrentSiteEnabled()) scan();
   });
   chrome.storage.local.get({ profileSettings: { topics: [] } }, ({ profileSettings }) => { interestTopics = profileSettings.topics || []; });
   chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
@@ -517,13 +532,14 @@
     if (changes.usefulVotes || changes.slopVotes) {
       chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
     }
-    if (!changes.enabled) return;
-    enabled = changes.enabled.newValue;
-    if (!enabled) {
-      document.querySelectorAll(`.${HIDDEN}`).forEach((post) => post.classList.remove(HIDDEN));
-      document.querySelectorAll(".signal-filter-notice").forEach((notice) => notice.remove());
+    if (changes.enabled) enabled = changes.enabled.newValue;
+    if (changes.linkedInEnabled) linkedInEnabled = changes.linkedInEnabled.newValue;
+    if (changes.xEnabled) xEnabled = changes.xEnabled.newValue;
+    if (!changes.enabled && !changes.linkedInEnabled && !changes.xEnabled) return;
+    if (!enabled || !isCurrentSiteEnabled()) {
+      clearCurrentSite();
     } else {
-      document.querySelectorAll("[data-signal-filter-processed]").forEach((post) => delete post.dataset[PROCESSED]);
+      clearCurrentSite();
       scan();
     }
     updateStatus();

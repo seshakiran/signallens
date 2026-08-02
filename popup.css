@@ -85,6 +85,7 @@ body { background-image: radial-gradient(circle at 90% -10%, color-mix(in srgb, 
 .view-tabs button.is-new { background: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); color: var(--on-primary); }
 .control-card, .learning-card, .card { background: color-mix(in srgb, var(--surface-container) 88%, transparent); border: 1px solid color-mix(in srgb, var(--outline-variant) 72%, transparent); border-radius: 20px 10px 20px 10px; box-shadow: var(--shadow); padding: 15px; }
 .switch { align-items: center; display: flex; font-weight: 700; gap: 10px; margin-bottom: 13px; }
+.site-switches { align-items: center; background: var(--surface-container-high); border-radius: 12px; display: flex; flex-wrap: wrap; gap: 9px 12px; margin: -3px 0 13px; padding: 9px 11px; }.site-switches > span { color: var(--on-surface-variant); font-size: 11px; font-weight: 800; margin-right: auto; }.site-switches label { align-items: center; display: inline-flex; font-size: 12px; font-weight: 700; gap: 6px; }.site-switches input { height: 16px; width: 16px; }
 input { accent-color: var(--primary); height: 18px; width: 18px; }
 .stat { background: var(--primary-container); border-radius: 20px 10px 20px 10px; display: flex; flex-direction: column; margin: 0; padding: 14px; }
 .stat strong { color: var(--primary); font-size: 28px; letter-spacing: -.8px; line-height: 1.05; }

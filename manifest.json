@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SignalLens for LinkedIn",
-  "version": "0.7.0",
-  "description": "Locally hides low-substance AI hype from LinkedIn's feed.",
+  "name": "SignalLens for LinkedIn & X",
+  "version": "0.8.0",
+  "description": "Locally filters low-substance posts from LinkedIn and X on the web.",
   "permissions": ["storage", "downloads"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "host_permissions": ["http://127.0.0.1:11434/*", "http://localhost:11434/*"],
@@ -16,7 +16,7 @@
     }
   ],
   "action": {
-    "default_title": "SignalLens for LinkedIn",
+    "default_title": "SignalLens for LinkedIn & X",
     "default_popup": "popup.html"
   }
 }

@@ -5,7 +5,7 @@
     <main class="app-shell">
       <header class="app-header">
         <div class="brand-mark">S</div>
-        <div><h1>SignalLens</h1><p>LinkedIn, with a higher signal-to-noise ratio.</p></div>
+        <div><h1>SignalLens</h1><p>LinkedIn &amp; X on the web, with a higher signal-to-noise ratio.</p></div>
         <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">☀</button>
         <span class="local-chip">Local</span>
       </header>
@@ -14,6 +14,7 @@
       <div id="dashboardView" class="dashboard-grid view-panel">
         <section class="control-card">
           <label class="switch"><input id="enabled" type="checkbox"><span>Filtering enabled</span></label>
+          <div class="site-switches" aria-label="Sites to filter"><span>Filter on</span><label><input id="linkedInEnabled" type="checkbox"><span>LinkedIn</span></label><label><input id="xEnabled" type="checkbox"><span>X</span></label></div>
           <section class="stat metrics">
             <div class="metric"><strong id="scannedCount">0</strong><span>posts assessed</span></div>
             <div class="metric"><strong id="filteredCount">0</strong><span>posts filtered</span></div>

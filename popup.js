@@ -1,4 +1,6 @@
 const enabled = document.querySelector('#enabled');
+const linkedInEnabled = document.querySelector('#linkedInEnabled');
+const xEnabled = document.querySelector('#xEnabled');
 const filteredCount = document.querySelector('#filteredCount');
 const scannedCount = document.querySelector('#scannedCount');
 const usefulVotes = document.querySelector('#usefulVotes');
@@ -109,6 +111,7 @@ function applyTheme(preference) {
 function renderCount({ filteredCount: count = 0 }) { filteredCount.textContent = count; }
 function renderScanned({ scannedCount: count = 0 }) { scannedCount.textContent = count; }
 chrome.storage.local.get({ enabled: true }, (settings) => { enabled.checked = settings.enabled; });
+chrome.storage.local.get({ linkedInEnabled: true, xEnabled: true }, (settings) => { linkedInEnabled.checked = settings.linkedInEnabled; xEnabled.checked = settings.xEnabled; });
 chrome.storage.local.get({ filteredCount: 0 }, renderCount);
 chrome.storage.local.get({ scannedCount: 0 }, renderScanned);
 chrome.storage.local.get({ usefulVotes: 0, mixedVotes: 0, slopVotes: 0 }, (votes) => { usefulVotes.textContent = votes.usefulVotes; mixedVotes.textContent = votes.mixedVotes; slopVotes.textContent = votes.slopVotes; });
@@ -192,7 +195,11 @@ bookmarkItems.addEventListener('click', (event) => {
   toggle.setAttribute('aria-expanded', String(!collapsed));
 });
 enabled.addEventListener('change', () => chrome.storage.local.set({ enabled: enabled.checked }));
+linkedInEnabled.addEventListener('change', () => chrome.storage.local.set({ linkedInEnabled: linkedInEnabled.checked }));
+xEnabled.addEventListener('change', () => chrome.storage.local.set({ xEnabled: xEnabled.checked }));
 chrome.storage.onChanged.addListener((changes) => {
+  if (changes.linkedInEnabled) linkedInEnabled.checked = changes.linkedInEnabled.newValue;
+  if (changes.xEnabled) xEnabled.checked = changes.xEnabled.newValue;
   if (changes.filteredCount) renderCount({ filteredCount: changes.filteredCount.newValue });
   if (changes.scannedCount) renderScanned({ scannedCount: changes.scannedCount.newValue });
   if (changes.usefulVotes) usefulVotes.textContent = changes.usefulVotes.newValue;
