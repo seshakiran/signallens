@@ -38,7 +38,7 @@ function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkItems.innerHTML = platforms.map((platform) => {
     const byFolder = groupBy(byPlatform[platform], (item) => item.folder || 'Inbox');
     const folders = Object.keys(byFolder).sort((a, b) => a.localeCompare(b));
-    return `<section class="bookmark-tree-source"><h3><span class="tree-caret">⌄</span>${platform} <b>${byPlatform[platform].length}</b></h3>${folders.map((folder) => `<section class="bookmark-tree-folder"><h4><span class="tree-branch">└</span>${escapeHtml(folder)} <b>${byFolder[folder].length}</b></h4>${byFolder[folder].slice().sort((a, b) => b.savedAt - a.savedAt).map((item) => `<article class="bookmark-item"><span>${platform} · ${escapeHtml(folder)}</span><a href="${escapeHtml(item.permalink)}" target="_blank" rel="noreferrer">${escapeHtml(item.preview)}</a></article>`).join('')}</section>`).join('')}</section>`;
+    return `<section class="bookmark-tree-source"><button class="tree-toggle tree-source-toggle" type="button" aria-expanded="true"><span class="tree-caret">⌄</span>${platform} <b>${byPlatform[platform].length}</b></button><div class="tree-children">${folders.map((folder) => `<section class="bookmark-tree-folder"><button class="tree-toggle tree-folder-toggle" type="button" aria-expanded="true"><span class="tree-branch">⌄</span>${escapeHtml(folder)} <b>${byFolder[folder].length}</b></button><div class="tree-children">${byFolder[folder].slice().sort((a, b) => b.savedAt - a.savedAt).map((item) => `<article class="bookmark-item"><span>${platform} · ${escapeHtml(folder)}</span><a href="${escapeHtml(item.permalink)}" target="_blank" rel="noreferrer">${escapeHtml(item.preview)}</a></article>`).join('')}</div></section>`).join('')}</div></section>`;
   }).join('');
 }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]); }
@@ -90,6 +90,22 @@ document.querySelector('.view-tabs').addEventListener('click', (event) => {
 document.querySelector('.export-actions').addEventListener('click', (event) => {
   const button = event.target.closest('[data-export]');
   if (button) chrome.runtime.sendMessage({ type: 'export-bookmarks', format: button.dataset.export });
+});
+document.querySelector('.bookmark-tree-actions').addEventListener('click', (event) => {
+  const action = event.target.closest('[data-tree-action]')?.dataset.treeAction;
+  if (!action) return;
+  const collapsed = action === 'collapse';
+  bookmarkItems.querySelectorAll('.bookmark-tree-source, .bookmark-tree-folder').forEach((branch) => {
+    branch.classList.toggle('is-collapsed', collapsed);
+    branch.querySelector(':scope > .tree-toggle').setAttribute('aria-expanded', String(!collapsed));
+  });
+});
+bookmarkItems.addEventListener('click', (event) => {
+  const toggle = event.target.closest('.tree-toggle');
+  if (!toggle) return;
+  const branch = toggle.closest('.bookmark-tree-source, .bookmark-tree-folder');
+  const collapsed = branch.classList.toggle('is-collapsed');
+  toggle.setAttribute('aria-expanded', String(!collapsed));
 });
 enabled.addEventListener('change', () => chrome.storage.local.set({ enabled: enabled.checked }));
 chrome.storage.onChanged.addListener((changes) => {

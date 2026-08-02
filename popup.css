@@ -97,14 +97,19 @@ small { color: var(--on-surface-variant); display: block; font-size: 12px; }
 .library-header p, .empty-library { color: var(--on-surface-variant); font-size: 12px; margin: 4px 0 0; }
 .export-actions { display: flex; gap: 6px; }
 .export-actions button { background: var(--primary-container); border: 0; border-radius: 999px; color: var(--on-primary-container); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; padding: 7px 10px; }
+.bookmark-tree-actions { display: flex; gap: 8px; margin-top: 14px; }
+.bookmark-tree-actions button { background: transparent; border: 1px solid var(--outline-variant); border-radius: 999px; color: var(--on-surface-variant); cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; padding: 6px 10px; }
+.bookmark-tree-actions button:hover { background: var(--surface-container-high); color: var(--on-surface); }
 .bookmark-items { border-top: 1px solid var(--outline-variant); margin-top: 14px; padding-top: 8px; }
 .bookmark-tree-source { margin: 10px 0 16px; }
-.bookmark-tree-source h3, .bookmark-tree-folder h4 { align-items: center; color: var(--on-surface); display: flex; font-size: 13px; gap: 7px; margin: 0; }
-.bookmark-tree-source h3 { background: var(--primary-container); border-radius: 10px; color: var(--on-primary-container); padding: 9px 11px; }
-.bookmark-tree-source h3 b, .bookmark-tree-folder h4 b { color: var(--primary); font-size: 11px; margin-left: auto; }
+.tree-toggle { align-items: center; border: 0; cursor: pointer; display: flex; font: inherit; gap: 7px; text-align: left; width: 100%; }
+.tree-source-toggle { background: var(--primary-container); border-radius: 10px; color: var(--on-primary-container); font-size: 13px; font-weight: 750; padding: 9px 11px; }
+.tree-folder-toggle { background: transparent; color: var(--on-surface-variant); font-size: 13px; font-weight: 700; padding: 5px 0 2px; }
+.tree-toggle b { color: var(--primary); font-size: 11px; margin-left: auto; }
 .bookmark-tree-folder { border-left: 1px solid var(--outline-variant); margin: 8px 0 0 12px; padding-left: 12px; }
-.bookmark-tree-folder h4 { color: var(--on-surface-variant); font-weight: 700; padding: 5px 0 2px; }
 .tree-caret, .tree-branch { color: var(--primary); font-weight: 800; }
+.tree-toggle[aria-expanded="false"] .tree-caret, .tree-toggle[aria-expanded="false"] .tree-branch { transform: rotate(-90deg); }
+.bookmark-tree-source.is-collapsed > .tree-children, .bookmark-tree-folder.is-collapsed > .tree-children { display: none; }
 .bookmark-item { background: var(--surface-container-high); border-radius: 12px; display: grid; gap: 6px; margin: 8px 0; padding: 12px; }
 .bookmark-item span { color: var(--primary); font-size: 11px; font-weight: 800; }
 .bookmark-item a { color: var(--primary); font-size: 13px; font-weight: 700; line-height: 1.35; text-decoration: none; }
