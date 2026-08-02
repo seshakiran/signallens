@@ -384,7 +384,8 @@
       if (settled || !badge.isConnected) return;
       settled = true;
       if (chrome.runtime.lastError || result?.error) {
-        badge.querySelector("span").textContent = "Gemma unavailable — rule-based";
+        const detail = result?.error || chrome.runtime.lastError?.message || "connection failed";
+        badge.querySelector("span").textContent = `Gemma unavailable: ${detail.slice(0, 56)}`;
         return;
       }
       const labels = { useful: "Gemma: useful", slop: "Gemma: likely low signal", uncertain: "Gemma: uncertain" };
