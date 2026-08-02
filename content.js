@@ -10,8 +10,27 @@
   // dataset keys must be camelCase; Chrome exposes this as data-signal-filter-processed.
   const PROCESSED = "signalFilterProcessed";
   const HIDDEN = "signal-filter-hidden";
+  const countedAssessments = new Set();
   let enabled = true;
   let sensitivity = 0;
+
+  function hashText(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function recordAssessment(post, fingerprint) {
+    const permalink = post.querySelector("a[href*='/feed/update/'], a[href*='/status/']")?.href;
+    const activity = post.getAttribute("data-urn") || post.getAttribute("data-activity-urn");
+    const key = permalink || activity || `${location.hostname}:${hashText(fingerprint)}`;
+    if (countedAssessments.has(key)) return;
+    countedAssessments.add(key);
+    chrome.runtime.sendMessage({ type: "record-assessment", key }, () => updateStatus());
+  }
 
   function updateStatus() {
     const pill = document.querySelector("#signal-filter-status");
@@ -288,10 +307,7 @@
     }
     post.dataset[PROCESSED] = "true";
     post.dataset.signalFilterFingerprint = fingerprint;
-    chrome.storage.local.get({ scannedCount: 0 }, ({ scannedCount }) => {
-      chrome.storage.local.set({ scannedCount: scannedCount + 1 });
-      updateStatus();
-    });
+    recordAssessment(post, fingerprint);
     // Tweet detail views, replies, and image-first posts can be brief. They
     // still need the same feedback and save controls as feed posts.
     if (text.length < 80 && !isXPost) return;
@@ -354,10 +370,7 @@
         // does not reveal a stable enclosing card in the DOM.
         heading.dataset[PROCESSED] = "true";
         addIndicator(heading.parentElement || heading, 0, [1, 0, 0, 0, 0, 0]);
-        chrome.storage.local.get({ scannedCount: 0 }, ({ scannedCount }) => {
-          chrome.storage.local.set({ scannedCount: scannedCount + 1 });
-          updateStatus();
-        });
+        recordAssessment(heading.parentElement || heading, heading.parentElement?.innerText || marker);
       }
     });
   }
