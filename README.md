@@ -35,6 +35,12 @@ SignalLens is local-first by design.
 
 Use the extension icon to open the dashboard. Reload the extension from Chrome’s extension page after pulling updates.
 
+### Optional local Gemma setup
+
+SignalLens can use `gemma4:e4b` through a local Ollama server. Because Ollama protects its API from unknown browser origins, it must be configured to allow Chrome extensions before Gemma judgments can work.
+
+On macOS, set `OLLAMA_ORIGINS` to `chrome-extension://*` with `launchctl`, then restart Ollama. This grants local Ollama access to installed Chrome extensions; use a specific extension origin instead if you need a stricter policy. The model and all post text remain on your device. See the [Ollama origin configuration guidance](https://docs.ollama.com/faq).
+
 ## How SignalLens decides
 
 The local fast path rewards concrete technical signals—measurements, benchmarks, papers, source links, code, model and system details—and discounts generic superlatives, unsupported claims, and engagement bait.
@@ -71,7 +77,7 @@ flowchart LR
   Controls --> Decision[Reversible show / hide]
 ```
 
-The scanner is designed for virtualized feeds: it rescans after feed updates, in-app navigation, and tab activation so controls remain attached without a page refresh. See the [full architecture document](docs/ARCHITECTURE.md) for component responsibilities, data boundaries, and the hosted-phase plan.
+The scanner is designed for virtualized feeds: it rescans after feed updates, in-app navigation, and tab activation so controls remain attached without a page refresh. See the [full architecture document](docs/ARCHITECTURE.md) for component responsibilities, data boundaries, local Ollama setup, and the hosted-phase plan.
 
 ## Roadmap
 

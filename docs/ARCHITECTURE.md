@@ -66,10 +66,16 @@ Each label is recorded as a pre-vote prediction for the agreement metric. After 
 | --- | --- | --- |
 | Extension settings, labels, feature vectors, model weights, bookmarks | `chrome.storage.local` | Persist local preferences on this browser profile |
 | Seen post identities | `chrome.storage.session` | Count each assessed post once per browser session |
-| Optional Gemma request | `127.0.0.1:11434` | Local-only inference through Ollama |
+| Optional Gemma request | `127.0.0.1:11434` or `localhost:11434` | Local-only inference through Ollama |
 | CSV / JSON export | User-selected download | Portable bookmark backup or integration input |
 
 No hosted SignalLens API is used in the current phase.
+
+### Local Ollama origin access
+
+Ollama enforces browser-origin protections. For the optional Gemma path, its local server must permit the Chrome extension origin through `OLLAMA_ORIGINS`. During unpacked development, `chrome-extension://*` is the practical setting because Chrome can assign an extension identifier at load time. For a production distribution, prefer allowing only SignalLens’s fixed extension origin.
+
+SignalLens tries both loopback addresses, serializes Gemma requests so a local model is not saturated, retains the model in memory for 15 minutes after use, and makes the live connection state visible in the Learning tab. If the local service is unavailable or declines a request, rule-based scoring and the local preference learner continue to work.
 
 ## Components
 
