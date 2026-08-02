@@ -4,16 +4,28 @@
 
 SignalLens helps you spend less time on vague AI hype and more time on posts with real substance. It runs in the browser, reads visible posts as you scroll, and lets you teach it what is useful, mixed, or low signal.
 
+## In action
+
+<p align="center">
+  <img src="assets/screenshots/dashboard.png" alt="SignalLens dashboard showing feed assessment, filtering, and local learning" width="360">
+  <img src="assets/screenshots/dark-dashboard.png" alt="SignalLens dashboard in dark theme" width="420">
+</p>
+
+| Dashboard | Adaptive theme |
+| --- | --- |
+| See assessed and filtered posts, explain the decision signals, and follow local-model agreement. | SignalLens follows your system theme and includes a quick manual light/dark toggle. |
+
 ## What it does
 
 - Scores visible posts locally as they enter your LinkedIn or X feed.
-- Uses **Gemma 4 through local Ollama** for a second, on-device judgment when it is available.
+- Supports a second opinion from **Ollama, LM Studio, Jan, OpenAI, Anthropic**, or another OpenAI-compatible endpoint.
 - Lets you mark posts as **👍 Useful**, **😐 Mixed**, or **👎 Low signal**.
 - Learns from new labels with a compact three-class preference model stored in Chrome.
 - Hides low-signal and mixed-relevance posts, while keeping every decision reversible.
 - Saves posts into local bookmark folders, with a dedicated bookmarks library.
 - Exports bookmarks as **CSV** for spreadsheets or **JSON** for integrations.
 - Uses an adaptive Material-style interface with automatic and manual light/dark themes.
+- Starts with a persona-guided setup and 30 selectable topics, then lets you change course through your labels.
 
 ## Privacy model
 
