@@ -252,13 +252,34 @@
 
   function inspect(post) {
     if (!enabled) return;
-    if (post.dataset[PROCESSED]) return;
+    // X virtualizes its timeline and may reuse an existing article for a
+    // different tweet. Reprocess only when its underlying content changes.
+    const cleanPost = post.cloneNode(true);
+    cleanPost.querySelectorAll(".signal-filter-badge, .signal-filter-notice, .signal-filter-bookmark-controls").forEach((element) => element.remove());
+    const text = (cleanPost.innerText || cleanPost.textContent || "").trim();
+    const isXPost = post.matches("article[data-testid='tweet']");
+    // Engagement counts change continuously on X. Identify a tweet by its stable
+    // permalink and post text so those updates do not recreate its controls.
+    const xPermalink = isXPost
+      ? cleanPost.querySelector("a[href*='/status/']")?.href || ""
+      : "";
+    const xText = isXPost
+      ? cleanPost.querySelector("[data-testid='tweetText']")?.textContent || ""
+      : "";
+    const fingerprint = isXPost
+      ? `${xPermalink}|${xText}`
+      : text.slice(0, 700);
+    if (post.dataset[PROCESSED] && post.dataset.signalFilterFingerprint === fingerprint) return;
+    if (post.dataset[PROCESSED]) {
+      post.querySelectorAll(".signal-filter-badge, .signal-filter-notice").forEach((element) => element.remove());
+      post.classList.remove(HIDDEN);
+    }
     post.dataset[PROCESSED] = "true";
+    post.dataset.signalFilterFingerprint = fingerprint;
     chrome.storage.local.get({ scannedCount: 0 }, ({ scannedCount }) => {
       chrome.storage.local.set({ scannedCount: scannedCount + 1 });
       updateStatus();
     });
-    const text = (post.innerText || "").trim();
     if (text.length < 80) return;
     const value = score(text);
     const features = featureVector(text);
@@ -359,4 +380,11 @@
     scheduleRescan(250);
     setTimeout(() => scan(document), 1100);
   }, true);
+
+  // X often replaces content in-place rather than exposing a reliable “new
+  // posts” control. This bounded rescan is cheap because fingerprints skip
+  // unchanged cards, while newly rendered tweets get controls immediately.
+  if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
+    setInterval(() => scan(document), 1800);
+  }
 })();
