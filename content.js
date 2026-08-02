@@ -300,11 +300,34 @@
     // simultaneous save cannot replace previously stored bookmarks.
     controls.setAttribute("aria-busy", "true");
     controls.textContent = "Saving…";
-    chrome.runtime.sendMessage({ type: "save-bookmark", bookmark: { folder, platform, permalink, preview } }, (result) => {
+    const bookmark = { folder, platform, permalink, preview };
+    const saveDirectly = () => {
+      // A content script has the same local storage permission as the service
+      // worker. This is a resilience path for X tabs where a suspended worker
+      // can close the response channel before replying.
+      chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ["Inbox"] }, ({ bookmarks, bookmarkFolders }) => {
+        const existing = bookmarks.some((item) => item.permalink === permalink);
+        const nextBookmarks = existing ? bookmarks : [...bookmarks, {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          ...bookmark,
+          savedAt: Date.now()
+        }];
+        const nextFolders = bookmarkFolders.includes(folder) ? bookmarkFolders : [...bookmarkFolders, folder];
+        chrome.storage.local.set({ bookmarks: nextBookmarks, bookmarkFolders: nextFolders }, () => {
+          controls.removeAttribute("aria-busy");
+          if (chrome.runtime.lastError) {
+            controls.innerHTML = '<span class="signal-filter-bookmark-error">Couldn’t save — try again</span>';
+            return;
+          }
+          controls.innerHTML = `<span class="signal-filter-bookmarked">✓ ${existing ? "Already saved" : `Saved to ${folder}`}</span>`;
+        });
+      });
+    };
+    chrome.runtime.sendMessage({ type: "save-bookmark", bookmark }, (result) => {
       controls.removeAttribute("aria-busy");
       const failure = chrome.runtime.lastError?.message || result?.error;
       if (failure || !result?.saved) {
-        controls.innerHTML = `<span class="signal-filter-bookmark-error">Couldn’t save — try again</span>`;
+        saveDirectly();
         return;
       }
       controls.innerHTML = `<span class="signal-filter-bookmarked">✓ ${result.existing ? "Already saved" : `Saved to ${folder}`}</span>`;
@@ -315,6 +338,14 @@
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.textContent = "Save";
+    const suppressPostHandling = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    // X listens to pointer events on the entire tweet card and may replace
+    // custom descendants before their click event fires. Stop that sequence at
+    // the extension control itself, not just at the final click.
+    ["pointerdown", "mousedown", "touchstart"].forEach((type) => trigger.addEventListener(type, suppressPostHandling));
     trigger.addEventListener("click", (event) => {
       // X delegates clicks from the whole post card. Keep this interaction in
       // the extension so it cannot be swallowed by (or trigger) the post UI.
@@ -330,6 +361,7 @@
         const save = document.createElement("button");
         save.type = "button";
         save.textContent = "Save here";
+        ["pointerdown", "mousedown", "touchstart"].forEach((type) => save.addEventListener(type, suppressPostHandling));
         const createFolder = () => {
           const folder = prompt("New bookmark folder")?.trim().slice(0, 40);
           if (!folder) {
