@@ -2,7 +2,6 @@
   const POST_SELECTORS = [
     "div.feed-shared-update-v2",
     "div[data-id^='urn:li:activity:']",
-    "article",
     "[data-view-name='feed-full-update']",
     "article[data-testid='tweet']"
   ];
@@ -217,6 +216,8 @@
     const badge = document.createElement("div");
     const result = value <= -3 ? "Likely low signal" : "Read locally";
     badge.className = "signal-filter-badge";
+    const xPost = post.matches("article[data-testid='tweet']");
+    if (xPost) badge.classList.add("signal-filter-badge-x");
     badge.innerHTML = `<span>${result}</span><button type="button" data-vote="useful" title="Useful">👍</button><button type="button" data-vote="mixed" title="Mixed">😐</button><button type="button" data-vote="slop" title="Low signal">👎</button>`;
     badge.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => {
@@ -228,7 +229,10 @@
         if (vote === "mixed") label(post, value, "Hidden as mixed relevance");
       });
     });
-    post.prepend(badge);
+    // X posts use a horizontal outer article. Attach inside the post's text
+    // area so the extension never becomes a new layout column.
+    const host = xPost ? post.querySelector("[data-testid='tweetText']")?.parentElement : post;
+    (host || post).prepend(badge);
     addBookmarkControl(post, badge);
     return badge;
   }
