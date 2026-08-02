@@ -307,6 +307,10 @@
   }
 
   function scan(root = document) {
+    // Mutation callbacks can hand us the post card itself rather than its
+    // parent. querySelectorAll only searches descendants, so inspect the root
+    // before looking through its children.
+    if (root.nodeType === Node.ELEMENT_NODE && POST_SELECTORS.some((selector) => root.matches(selector))) inspect(root);
     POST_SELECTORS.forEach((selector) => root.querySelectorAll(selector).forEach(inspect));
     // LinkedIn's newer feed marks cards semantically instead of with stable classes.
     root.querySelectorAll("h1, h2, h3, h4, h5, h6, [role='heading'], [aria-label='Feed post']").forEach((heading) => {
@@ -386,18 +390,23 @@
   // controls immediately.
   document.addEventListener("click", (event) => {
     const target = event.target.closest("button, [role='button']");
-    const action = target && (target.innerText || target.getAttribute("aria-label") || "");
-    const isLiveFeedAction = /new posts|show\s+\d+\s+posts/i.test(action || "");
+    const action = target && `${target.innerText || ""} ${target.getAttribute("aria-label") || ""} ${target.getAttribute("data-control-name") || ""}`;
+    const isLiveFeedAction = /new\s+posts|show\s+\d+\s+posts/i.test(action || "");
     if (!isLiveFeedAction) return;
     scheduleRescan(250);
     setTimeout(() => scan(document), 1100);
+    // LinkedIn may append the fresh cards only after its feed request has
+    // completed; this final pass covers slower responses without a reload.
+    setTimeout(() => scan(document), 2500);
   }, true);
 
-  // X often replaces content in-place rather than exposing a reliable “new
-  // posts” control. This bounded rescan is cheap because fingerprints skip
-  // unchanged cards, while newly rendered tweets get controls immediately.
-  if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
+  // Social feeds regularly replace content in-place. This bounded rescan is
+  // cheap because fingerprints skip unchanged cards, while newly rendered
+  // LinkedIn and X posts receive controls without a full page refresh.
+  if (/(^|\.)(linkedin\.com|x\.com|twitter\.com)$/.test(location.hostname)) {
     setInterval(() => scan(document), 1800);
+  }
+  if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
     const rescanAfterNavigation = () => {
       scheduleRescan(0);
       setTimeout(() => scan(document), 300);
