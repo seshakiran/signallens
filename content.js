@@ -2,6 +2,8 @@
   const POST_SELECTORS = [
     "div.feed-shared-update-v2",
     "div[data-id^='urn:li:activity:']",
+    "[data-urn^='urn:li:activity:']",
+    "[data-activity-urn^='urn:li:activity:']",
     "[data-view-name='feed-full-update']",
     "article[data-testid='tweet']"
   ];
@@ -312,6 +314,22 @@
     // before looking through its children.
     if (root.nodeType === Node.ELEMENT_NODE && POST_SELECTORS.some((selector) => root.matches(selector))) inspect(root);
     POST_SELECTORS.forEach((selector) => root.querySelectorAll(selector).forEach(inspect));
+    // LinkedIn sometimes swaps to a compact card that exposes only the post
+    // permalink. Use that durable activity marker to find its enclosing card.
+    root.querySelectorAll("a[href*='/feed/update/'], a[href*='/posts/']").forEach((link) => {
+      let card = link.closest("article, [data-urn], [data-activity-urn], [data-view-name='feed-full-update']");
+      if (!card) {
+        let candidate = link.parentElement;
+        for (let level = 0; candidate && level < 7; level += 1, candidate = candidate.parentElement) {
+          const candidateText = (candidate.innerText || "").trim();
+          if (candidateText.length >= 40 && candidateText.length <= 40000) {
+            card = candidate;
+            break;
+          }
+        }
+      }
+      if (card) inspect(card);
+    });
     // LinkedIn's newer feed marks cards semantically instead of with stable classes.
     root.querySelectorAll("h1, h2, h3, h4, h5, h6, [role='heading'], [aria-label='Feed post']").forEach((heading) => {
       const marker = `${heading.textContent || ""} ${heading.getAttribute("aria-label") || ""}`.trim().toLowerCase();
