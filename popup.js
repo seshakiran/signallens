@@ -8,6 +8,11 @@ const preferenceExamples = document.querySelector('#preferenceExamples');
 const accuracyPercent = document.querySelector('#accuracyPercent');
 const accuracyDetail = document.querySelector('#accuracyDetail');
 const accuracyBreakdown = document.querySelector('#accuracyBreakdown');
+const learningStage = document.querySelector('#learningStage');
+const learningProgressValue = document.querySelector('#learningProgressValue');
+const learningProgressBar = document.querySelector('#learningProgressBar');
+const learningProgressNote = document.querySelector('#learningProgressNote');
+const learningMix = document.querySelector('#learningMix');
 const bookmarkCount = document.querySelector('#bookmarkCount');
 const folderName = document.querySelector('#folderName');
 const addFolder = document.querySelector('#addFolder');
@@ -30,6 +35,23 @@ function renderAccuracy({ version, predictions = 0, correct = 0, byLabel = {} })
     const result = byLabel[key] || { predictions: 0, correct: 0 };
     return result.predictions ? `${name} ${Math.round((result.correct / result.predictions) * 100)}%` : `${name} —`;
   }).join(' · ');
+}
+function renderLearningProgress(examples = []) {
+  const count = examples.length;
+  const mix = examples.reduce((totals, example) => {
+    totals[example.vote] = (totals[example.vote] || 0) + 1;
+    return totals;
+  }, { useful: 0, mixed: 0, slop: 0 });
+  const phase = count < 8
+    ? { title: 'Collecting baseline', note: `${count} of 8 labels before full local retraining begins.` }
+    : count < 24
+      ? { title: 'Calibrating preferences', note: 'Retraining locally after every label; more varied examples improve reliability.' }
+      : { title: 'Personalizing your feed', note: 'Your local model is adapting after every new label and correction.' };
+  learningStage.textContent = phase.title;
+  learningProgressValue.textContent = `${count} / 24`;
+  learningProgressBar.style.width = `${Math.max(3, Math.min(100, (count / 24) * 100))}%`;
+  learningProgressNote.textContent = phase.note;
+  learningMix.innerHTML = `<span>👍 ${mix.useful}</span><span>😐 ${mix.mixed}</span><span>👎 ${mix.slop}</span><em>vectors only · stays on this device</em>`;
 }
 function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;
@@ -69,6 +91,7 @@ chrome.storage.local.get({ scannedCount: 0 }, renderScanned);
 chrome.storage.local.get({ usefulVotes: 0, mixedVotes: 0, slopVotes: 0 }, (votes) => { usefulVotes.textContent = votes.usefulVotes; mixedVotes.textContent = votes.mixedVotes; slopVotes.textContent = votes.slopVotes; });
 chrome.storage.local.get({ preferenceModel: { examples: 0 } }, ({ preferenceModel }) => { preferenceExamples.textContent = preferenceModel.examples; });
 chrome.storage.local.get({ preferenceStats: { predictions: 0, correct: 0 } }, ({ preferenceStats }) => renderAccuracy(preferenceStats));
+chrome.storage.local.get({ trainingExamples: [] }, ({ trainingExamples }) => renderLearningProgress(trainingExamples));
 chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
 chrome.storage.local.get({ themePreference: 'system' }, ({ themePreference }) => applyTheme(themePreference));
 themeToggle.addEventListener('click', () => chrome.storage.local.set({ themePreference: document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark' }));
@@ -128,6 +151,7 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.mixedVotes) mixedVotes.textContent = changes.mixedVotes.newValue;
   if (changes.preferenceModel) preferenceExamples.textContent = changes.preferenceModel.newValue.examples;
   if (changes.preferenceStats) renderAccuracy(changes.preferenceStats.newValue);
+  if (changes.trainingExamples) renderLearningProgress(changes.trainingExamples.newValue);
   if (changes.bookmarks || changes.bookmarkFolders) chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
   if (changes.themePreference) applyTheme(changes.themePreference.newValue);
 });

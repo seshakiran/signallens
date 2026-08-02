@@ -21,7 +21,13 @@
         <section class="learning-card">
           <h2>Personal learning</h2>
           <p class="votes"><span id="usefulVotes">0</span> useful · <span id="mixedVotes">0</span> mixed · <span id="slopVotes">0</span> low signal</p>
-          <p class="votes"><span id="preferenceExamples">0</span> trainable examples · adapts after 12</p>
+          <p class="votes"><span id="preferenceExamples">0</span> trainable examples · personal filtering after 12</p>
+          <section class="learning-progress" aria-live="polite">
+            <div class="learning-progress-header"><span id="learningStage">Collecting baseline</span><b id="learningProgressValue">0 / 24</b></div>
+            <div class="learning-progress-track"><span id="learningProgressBar"></span></div>
+            <p id="learningProgressNote">Label posts to build a private, personal signal profile.</p>
+            <div id="learningMix" class="learning-mix"></div>
+          </section>
           <section class="stat learning-stat"><strong id="accuracyPercent">—</strong><span id="accuracyDetail">agreement needs labels</span><small id="accuracyBreakdown"></small></section>
         </section>
         <section class="rules card">

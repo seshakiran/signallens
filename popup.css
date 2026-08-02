@@ -79,6 +79,15 @@ input { accent-color: var(--primary); height: 18px; width: 18px; }
 .rules .note { background: var(--surface-container); border-radius: 12px; font-size: 12px; margin-top: 13px; padding: 10px 12px; }
 .votes { color: var(--on-surface-variant); font-size: 12px; margin: 7px 0; }
 .votes span { color: var(--primary); font-weight: 800; }
+.learning-progress { background: var(--surface-container-high); border-radius: 14px; margin-top: 12px; padding: 12px 14px; }
+.learning-progress-header { align-items: center; display: flex; font-size: 12px; font-weight: 800; gap: 10px; justify-content: space-between; }
+.learning-progress-header b { color: var(--primary); font-size: 11px; }
+.learning-progress-track { background: var(--outline-variant); border-radius: 999px; height: 7px; margin: 10px 0 8px; overflow: hidden; }
+.learning-progress-track span { background: linear-gradient(90deg, var(--primary), #7ea7f8); border-radius: inherit; display: block; height: 100%; transition: width .28s ease; }
+.learning-progress p { color: var(--on-surface-variant); font-size: 11px; line-height: 1.4; margin: 0; }
+.learning-mix { align-items: center; color: var(--on-surface-variant); display: flex; flex-wrap: wrap; font-size: 11px; gap: 7px; margin-top: 10px; }
+.learning-mix span { background: var(--surface-container); border-radius: 999px; padding: 3px 6px; }
+.learning-mix em { font-size: 10px; font-style: normal; margin-left: auto; }
 .learning-stat { background: var(--surface-container-high); border-radius: 14px; margin-top: 12px; padding: 12px 14px; }
 .learning-stat strong { font-size: 24px; }
 .learning-stat small { color: var(--on-surface-variant); font-size: 11px; line-height: 1.35; margin-top: 5px; }
