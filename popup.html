@@ -9,7 +9,7 @@
         <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">☀</button>
         <span class="local-chip">Local</span>
       </header>
-      <nav class="view-tabs"><button class="is-active" data-view="dashboard" type="button">Dashboard</button><button data-view="learning" type="button">Learning</button><button data-view="library" type="button">Bookmarks</button></nav>
+      <nav class="view-tabs"><button class="is-active" data-view="dashboard" type="button">Dashboard</button><button data-view="features" type="button">Features</button><button data-view="learning" type="button">Learning</button><button data-view="library" type="button">Bookmarks</button></nav>
       <div id="dashboardView" class="dashboard-grid view-panel">
         <section class="control-card">
           <label class="switch"><input id="enabled" type="checkbox"><span>Filtering enabled</span></label>
@@ -25,6 +25,21 @@
           <p class="note">Rule-based locally, with Gemma 4 as a private second opinion.</p>
         </section>
       </div>
+      <section id="featuresView" class="features-view view-panel" hidden>
+        <div class="feature-hero">
+          <span class="eyebrow">LOCAL-FIRST SIGNAL QUALITY</span>
+          <h2>Make your feed feel worth reading again.</h2>
+          <p>SignalLens cuts the repetitive AI noise while keeping every decision transparent, personal, and reversible.</p>
+          <button id="startFiltering" class="primary-action" type="button">Open your dashboard <span>→</span></button>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-icon blue">◈</span><h3>Read with intent</h3><p>Scores technical depth, evidence, links, code, metrics, and promotional language as you browse.</p></article>
+          <article class="feature-card"><span class="feature-icon violet">✦</span><h3>Teach your taste</h3><p>Useful, Mixed, and Low signal labels shape a private preference model that improves with corrections.</p></article>
+          <article class="feature-card"><span class="feature-icon amber">⌁</span><h3>Keep what matters</h3><p>Save valuable LinkedIn and X posts into folders, then browse or export your local library.</p></article>
+          <article class="feature-card"><span class="feature-icon green">◌</span><h3>Stay in control</h3><p>Every filtered post can be restored. The local rules still work whenever Gemma is not available.</p></article>
+        </div>
+        <section class="feature-trust"><div><span>Private by default</span><b>Your feed, labels, and bookmarks stay on this device.</b></div><div><span>Optional local AI</span><b>Gemma 4 runs through your own Ollama service.</b></div></section>
+      </section>
       <section id="learningView" class="learning-card view-panel" hidden>
         <h2>Personal learning</h2>
         <p class="learning-intro">Your labels teach SignalLens what counts as valuable to you. It stores feature vectors locally, never post text.</p>

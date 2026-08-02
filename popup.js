@@ -20,6 +20,7 @@ const addFolder = document.querySelector('#addFolder');
 const folderList = document.querySelector('#folderList');
 const themeToggle = document.querySelector('#themeToggle');
 const dashboardView = document.querySelector('#dashboardView');
+const featuresView = document.querySelector('#featuresView');
 const learningView = document.querySelector('#learningView');
 const bookmarkLibrary = document.querySelector('#bookmarkLibrary');
 const bookmarkItems = document.querySelector('#bookmarkItems');
@@ -62,6 +63,14 @@ function renderGemmaStatus(status) {
   gemmaStatus.classList.toggle('is-ready', ready);
   gemmaStatus.classList.toggle('is-error', failed);
 }
+function setView(view, { completeTour = true } = {}) {
+  dashboardView.hidden = view !== 'dashboard';
+  featuresView.hidden = view !== 'features';
+  learningView.hidden = view !== 'learning';
+  bookmarkLibrary.hidden = view !== 'library';
+  document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('is-active', item.dataset.view === view));
+  if (completeTour && view !== 'features') chrome.storage.local.set({ featureTourSeen: true });
+}
 function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;
   const counts = Object.fromEntries(bookmarkFolders.map((folder) => [folder, bookmarks.filter((item) => item.folder === folder).length]));
@@ -102,6 +111,9 @@ chrome.storage.local.get({ preferenceModel: { examples: 0 } }, ({ preferenceMode
 chrome.storage.local.get({ preferenceStats: { predictions: 0, correct: 0 } }, ({ preferenceStats }) => renderAccuracy(preferenceStats));
 chrome.storage.local.get({ trainingExamples: [] }, ({ trainingExamples }) => renderLearningProgress(trainingExamples));
 chrome.storage.local.get({ gemmaStatus: null }, ({ gemmaStatus: status }) => renderGemmaStatus(status));
+chrome.storage.local.get({ featureTourSeen: false }, ({ featureTourSeen }) => {
+  if (!featureTourSeen) setView('features', { completeTour: false });
+});
 chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
 chrome.storage.local.get({ themePreference: 'system' }, ({ themePreference }) => applyTheme(themePreference));
 themeToggle.addEventListener('click', () => chrome.storage.local.set({ themePreference: document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark' }));
@@ -127,12 +139,9 @@ folderList.addEventListener('click', (event) => {
 document.querySelector('.view-tabs').addEventListener('click', (event) => {
   const button = event.target.closest('[data-view]');
   if (!button) return;
-  const view = button.dataset.view;
-  dashboardView.hidden = view !== 'dashboard';
-  learningView.hidden = view !== 'learning';
-  bookmarkLibrary.hidden = view !== 'library';
-  document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('is-active', item === button));
+  setView(button.dataset.view);
 });
+document.querySelector('#startFiltering').addEventListener('click', () => setView('dashboard'));
 document.querySelector('.export-actions').addEventListener('click', (event) => {
   const button = event.target.closest('[data-export]');
   if (button) chrome.runtime.sendMessage({ type: 'export-bookmarks', format: button.dataset.export });
