@@ -405,6 +405,18 @@
   // LinkedIn and X posts receive controls without a full page refresh.
   if (/(^|\.)(linkedin\.com|x\.com|twitter\.com)$/.test(location.hostname)) {
     setInterval(() => scan(document), 1800);
+    // Browsers throttle extension timers in background tabs. Feed changes may
+    // land while LinkedIn/X is inactive, so make an immediate set of passes
+    // when the user returns to the window instead of waiting for a refresh.
+    const rescanWhenActive = () => {
+      if (document.visibilityState !== "visible") return;
+      scheduleRescan(0);
+      setTimeout(() => scan(document), 350);
+      setTimeout(() => scan(document), 1200);
+    };
+    addEventListener("focus", rescanWhenActive);
+    document.addEventListener("visibilitychange", rescanWhenActive);
+    addEventListener("pageshow", rescanWhenActive);
   }
   if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
     const rescanAfterNavigation = () => {
