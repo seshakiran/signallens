@@ -1,6 +1,7 @@
 const OLLAMA_URL = "http://127.0.0.1:11434/api/generate";
 const MODEL = "gemma4:e4b";
 let assessmentQueue = Promise.resolve();
+let bookmarkQueue = Promise.resolve();
 
 function resetAssessmentSession() {
   return Promise.all([
@@ -13,6 +14,10 @@ chrome.runtime.onInstalled.addListener(() => { resetAssessmentSession(); });
 chrome.runtime.onStartup.addListener(() => { resetAssessmentSession(); });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === 'save-bookmark') {
+    saveBookmark(message.bookmark).then(sendResponse).catch((error) => sendResponse({ saved: false, error: error.message }));
+    return true;
+  }
   if (message.type === 'record-assessment') {
     recordAssessment(message.key).then(sendResponse);
     return true;
@@ -31,6 +36,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   classify(message.text).then(sendResponse).catch((error) => sendResponse({ error: error.message }));
   return true;
 });
+
+async function saveBookmark(bookmark) {
+  const task = bookmarkQueue.then(() => saveBookmarkSafely(bookmark));
+  bookmarkQueue = task.catch(() => undefined);
+  return task;
+}
+
+async function saveBookmarkSafely(bookmark) {
+  const { bookmarks = [], bookmarkFolders = ['Inbox'] } = await chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] });
+  const existing = bookmarks.some((item) => item.permalink === bookmark.permalink);
+  const nextBookmarks = existing ? bookmarks : [...bookmarks, {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    folder: bookmark.folder,
+    platform: bookmark.platform,
+    permalink: bookmark.permalink,
+    preview: bookmark.preview,
+    savedAt: Date.now()
+  }];
+  const nextFolders = bookmarkFolders.includes(bookmark.folder) ? bookmarkFolders : [...bookmarkFolders, bookmark.folder];
+  await chrome.storage.local.set({ bookmarks: nextBookmarks, bookmarkFolders: nextFolders });
+  return { saved: true, existing };
+}
 
 async function recordAssessment(key) {
   const task = assessmentQueue.then(() => recordAssessmentSafely(key));

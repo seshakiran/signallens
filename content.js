@@ -254,12 +254,11 @@
       ? post.querySelector("a[href*='/status/']")?.href || location.href
       : post.querySelector("a[href*='/feed/update/']")?.href || location.href;
     const platform = isXPost ? "X" : "LinkedIn";
-    chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ["Inbox"] }, ({ bookmarks, bookmarkFolders }) => {
-      const exists = bookmarks.some((item) => item.permalink === permalink && item.preview === preview);
-      const nextBookmarks = exists ? bookmarks : [...bookmarks, { id: `${Date.now()}-${preview.slice(0, 24)}`, folder, platform, permalink, preview, savedAt: Date.now() }];
-      const nextFolders = bookmarkFolders.includes(folder) ? bookmarkFolders : [...bookmarkFolders, folder];
-      chrome.storage.local.set({ bookmarks: nextBookmarks, bookmarkFolders: nextFolders });
-      controls.innerHTML = `<span class="signal-filter-bookmarked">✓ Saved to ${folder}</span>`;
+    // The service worker serializes saves from every open LinkedIn/X tab so a
+    // simultaneous save cannot replace previously stored bookmarks.
+    chrome.runtime.sendMessage({ type: "save-bookmark", bookmark: { folder, platform, permalink, preview } }, (result) => {
+      if (chrome.runtime.lastError || !result?.saved) return;
+      controls.innerHTML = `<span class="signal-filter-bookmarked">✓ ${result.existing ? "Already saved" : `Saved to ${folder}`}</span>`;
     });
   }
 
