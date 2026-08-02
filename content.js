@@ -176,10 +176,14 @@
 
   function saveBookmark(post, folder, controls) {
     const preview = (post.innerText || "").replace(/\s+/g, " ").trim().slice(0, 220);
-    const permalink = post.querySelector("a[href*='/feed/update/']")?.href || location.href;
+    const isXPost = post.matches("article[data-testid='tweet']");
+    const permalink = isXPost
+      ? post.querySelector("a[href*='/status/']")?.href || location.href
+      : post.querySelector("a[href*='/feed/update/']")?.href || location.href;
+    const platform = isXPost ? "X" : "LinkedIn";
     chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ["Inbox"] }, ({ bookmarks, bookmarkFolders }) => {
       const exists = bookmarks.some((item) => item.permalink === permalink && item.preview === preview);
-      const nextBookmarks = exists ? bookmarks : [...bookmarks, { id: `${Date.now()}-${preview.slice(0, 24)}`, folder, permalink, preview, savedAt: Date.now() }];
+      const nextBookmarks = exists ? bookmarks : [...bookmarks, { id: `${Date.now()}-${preview.slice(0, 24)}`, folder, platform, permalink, preview, savedAt: Date.now() }];
       const nextFolders = bookmarkFolders.includes(folder) ? bookmarkFolders : [...bookmarkFolders, folder];
       chrome.storage.local.set({ bookmarks: nextBookmarks, bookmarkFolders: nextFolders });
       controls.innerHTML = `<span class="signal-filter-bookmarked">✓ Saved to ${folder}</span>`;
@@ -224,7 +228,9 @@
         const vote = button.dataset.vote;
         recordFeedback(vote, features);
         badge.querySelector("span").textContent = vote === "useful" ? "Marked useful" : vote === "mixed" ? "Marked mixed" : "Marked low signal";
-        badge.querySelectorAll("button").forEach((item) => item.remove());
+        // Keep Save available after a Useful vote. Feedback and bookmarking are
+        // independent actions: a valuable post may still be worth saving.
+        badge.querySelectorAll("button[data-vote]").forEach((item) => item.remove());
         if (vote === "slop") label(post, value);
         if (vote === "mixed") label(post, value, "Hidden as mixed relevance");
       });

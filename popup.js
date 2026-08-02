@@ -23,7 +23,23 @@ function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;
   const counts = Object.fromEntries(bookmarkFolders.map((folder) => [folder, bookmarks.filter((item) => item.folder === folder).length]));
   folderList.innerHTML = bookmarkFolders.map((folder) => `<button class="folder-chip" data-folder="${escapeHtml(folder)}" title="Rename folder">${escapeHtml(folder)} <b>${counts[folder]}</b></button>`).join('');
-  bookmarkItems.innerHTML = bookmarks.length ? bookmarks.slice().sort((a, b) => b.savedAt - a.savedAt).map((item) => `<article class="bookmark-item"><span>${escapeHtml(item.folder)}</span><a href="${escapeHtml(item.permalink)}" target="_blank">${escapeHtml(item.preview)}</a></article>`).join('') : '<p class="empty-library">No saved posts yet. Use Save on a post to add one.</p>';
+  if (!bookmarks.length) {
+    bookmarkItems.innerHTML = '<p class="empty-library">No saved posts yet. Use Save on a post to add one.</p>';
+    return;
+  }
+  const platformFor = (item) => item.platform || (/x\.com|twitter\.com/.test(item.permalink) ? 'X' : 'LinkedIn');
+  const groupBy = (items, keyFor) => items.reduce((groups, item) => {
+    const key = keyFor(item);
+    (groups[key] ||= []).push(item);
+    return groups;
+  }, {});
+  const byPlatform = groupBy(bookmarks, platformFor);
+  const platforms = ['LinkedIn', 'X'].filter((platform) => byPlatform[platform]?.length);
+  bookmarkItems.innerHTML = platforms.map((platform) => {
+    const byFolder = groupBy(byPlatform[platform], (item) => item.folder || 'Inbox');
+    const folders = Object.keys(byFolder).sort((a, b) => a.localeCompare(b));
+    return `<section class="bookmark-tree-source"><h3><span class="tree-caret">⌄</span>${platform} <b>${byPlatform[platform].length}</b></h3>${folders.map((folder) => `<section class="bookmark-tree-folder"><h4><span class="tree-branch">└</span>${escapeHtml(folder)} <b>${byFolder[folder].length}</b></h4>${byFolder[folder].slice().sort((a, b) => b.savedAt - a.savedAt).map((item) => `<article class="bookmark-item"><span>${platform} · ${escapeHtml(folder)}</span><a href="${escapeHtml(item.permalink)}" target="_blank" rel="noreferrer">${escapeHtml(item.preview)}</a></article>`).join('')}</section>`).join('')}</section>`;
+  }).join('');
 }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]); }
 function applyTheme(preference) {
