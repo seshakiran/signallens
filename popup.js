@@ -128,6 +128,10 @@ document.querySelector('#saveLlmConfig').addEventListener('click', async () => {
   try { const url = new URL(config.endpoint); await chrome.permissions.request({ origins: [`${url.protocol}//${url.host}/*`] }); } catch (_) {}
   chrome.storage.local.set({ llmConfig: config }); document.querySelector('#llmConfigStatus').textContent = `${config.provider} saved locally.`;
 });
+document.querySelector('#llmProvider').addEventListener('change', (event) => {
+  const presets = { ollama: ['http://127.0.0.1:11434/api/generate', 'gemma4:e4b'], compatible: ['http://127.0.0.1:1234/v1/chat/completions', 'local-model'], openai: ['https://api.openai.com/v1/chat/completions', 'gpt-4.1-mini'], anthropic: ['https://api.anthropic.com/v1/messages', 'claude-sonnet-4-20250514'] };
+  const [endpoint, model] = presets[event.target.value]; document.querySelector('#llmEndpoint').value = endpoint; document.querySelector('#llmModel').value = model;
+});
 themeToggle.addEventListener('click', () => chrome.storage.local.set({ themePreference: document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark' }));
 addFolder.addEventListener('click', () => {
   const folder = folderName.value.trim().slice(0, 40);
