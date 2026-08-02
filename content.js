@@ -526,11 +526,15 @@
     rescanTimer = setTimeout(() => scan(document), delay);
   }
 
-  addStatus();
   function clearCurrentSite() {
     document.querySelectorAll(`.${HIDDEN}`).forEach((post) => post.classList.remove(HIDDEN));
     document.querySelectorAll(".signal-filter-notice, .signal-filter-badge, .signal-filter-bookmark-controls").forEach((element) => element.remove());
     document.querySelectorAll("[data-signal-filter-processed]").forEach((post) => delete post.dataset[PROCESSED]);
+    // Do not leave an "active" indicator behind when this specific site has
+    // been disabled. It otherwise looks as though X is still being read.
+    document.querySelector("#signal-filter-status")?.remove();
+    document.querySelector("#signal-filter-panel")?.remove();
+    document.querySelector("#signal-filter-launcher")?.remove();
   }
 
   function isCurrentSiteEnabled() {
@@ -546,10 +550,8 @@
     return enabled && isCurrentSiteEnabled() && isXHomeTimeline();
   }
 
-  function clearXDetailUi() {
-    if (isXHomeTimeline()) return;
+  function clearInactiveSiteUi() {
     clearCurrentSite();
-    document.querySelector("#signal-filter-status")?.remove();
   }
 
   chrome.storage.local.get({ enabled: true, linkedInEnabled: true, xEnabled: true }, (settings) => {
@@ -557,8 +559,12 @@
     enabled = saved;
     linkedInEnabled = settings.linkedInEnabled;
     xEnabled = settings.xEnabled;
-    if (canScanCurrentPage()) scan();
-    else clearXDetailUi();
+    if (canScanCurrentPage()) {
+      addStatus();
+      scan();
+    } else {
+      clearInactiveSiteUi();
+    }
   });
   chrome.storage.local.get({ profileSettings: { topics: [] } }, ({ profileSettings }) => { interestTopics = profileSettings.topics || []; });
   chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
@@ -573,9 +579,10 @@
     if (changes.xEnabled) xEnabled = changes.xEnabled.newValue;
     if (!changes.enabled && !changes.linkedInEnabled && !changes.xEnabled) return;
     if (!canScanCurrentPage()) {
-      clearCurrentSite();
+      clearInactiveSiteUi();
     } else {
       clearCurrentSite();
+      addStatus();
       scan();
     }
     updateStatus();
@@ -627,7 +634,7 @@
   }
   if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
     const rescanAfterNavigation = () => {
-      clearXDetailUi();
+      clearCurrentSite();
       if (!canScanCurrentPage()) return;
       addStatus();
       scheduleRescan(0);
