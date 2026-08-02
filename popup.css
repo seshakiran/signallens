@@ -81,6 +81,7 @@ input { accent-color: var(--primary); height: 18px; width: 18px; }
 .votes span { color: var(--primary); font-weight: 800; }
 .learning-stat { background: var(--surface-container-high); border-radius: 14px; margin-top: 12px; padding: 12px 14px; }
 .learning-stat strong { font-size: 24px; }
+.learning-stat small { color: var(--on-surface-variant); font-size: 11px; line-height: 1.35; margin-top: 5px; }
 .bookmarks h2 span { color: var(--primary); font-size: 13px; margin-left: 4px; }
 .folder-add { display: flex; gap: 8px; }
 .folder-add input { background: transparent; border: 1px solid var(--outline); border-radius: 10px; color: var(--on-surface); flex: 1; font: inherit; height: auto; min-width: 0; outline: none; padding: 9px 11px; width: auto; }

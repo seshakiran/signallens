@@ -7,6 +7,7 @@ const mixedVotes = document.querySelector('#mixedVotes');
 const preferenceExamples = document.querySelector('#preferenceExamples');
 const accuracyPercent = document.querySelector('#accuracyPercent');
 const accuracyDetail = document.querySelector('#accuracyDetail');
+const accuracyBreakdown = document.querySelector('#accuracyBreakdown');
 const bookmarkCount = document.querySelector('#bookmarkCount');
 const folderName = document.querySelector('#folderName');
 const addFolder = document.querySelector('#addFolder');
@@ -15,9 +16,20 @@ const themeToggle = document.querySelector('#themeToggle');
 const dashboardView = document.querySelector('#dashboardView');
 const bookmarkLibrary = document.querySelector('#bookmarkLibrary');
 const bookmarkItems = document.querySelector('#bookmarkItems');
-function renderAccuracy({ predictions = 0, correct = 0 }) {
+function renderAccuracy({ version, predictions = 0, correct = 0, byLabel = {} }) {
+  if (version !== 2) {
+    accuracyPercent.textContent = '—';
+    accuracyDetail.textContent = 'richer local model needs new labels';
+    accuracyBreakdown.textContent = 'Previous aggregate score is not comparable.';
+    return;
+  }
   accuracyPercent.textContent = predictions ? `${Math.round((correct / predictions) * 100)}%` : '—';
   accuracyDetail.textContent = predictions ? `agreement with your labels · ${correct} of ${predictions}` : 'personal-model agreement needs labels';
+  const labelName = { useful: 'Useful', mixed: 'Mixed', slop: 'Low signal' };
+  accuracyBreakdown.textContent = Object.entries(labelName).map(([key, name]) => {
+    const result = byLabel[key] || { predictions: 0, correct: 0 };
+    return result.predictions ? `${name} ${Math.round((result.correct / result.predictions) * 100)}%` : `${name} —`;
+  }).join(' · ');
 }
 function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;

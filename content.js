@@ -112,19 +112,49 @@
   const evidenceTerms = ["http://", "https://", "arxiv.org", "github.com", "doi.org", "documentation", "source:", "paper:", "benchmark:"];
   const hypeTerms = ["game changer", "revolutionary", "mind blowing", "the future is here", "will replace", "10x", "everyone needs", "don't get left behind", "this changes everything", "unlock", "secret", "just launched"];
 
-  // A compact local model: [bias, technical depth, evidence, metrics, hype, length].
+  // A local-only model. Feature vectors, never post text, are retained for
+  // preference learning: [bias, technical depth, evidence, metrics, hype,
+  // length, links, code, citations, firsthand experience, engagement bait,
+  // vocabulary diversity].
   const CLASSES = ["useful", "mixed", "slop"];
-  const DEFAULT_PREFERENCE_MODEL = { weights: { useful: [0, 0, 0, 0, 0, 0], mixed: [0, 0, 0, 0, 0, 0], slop: [0, 0, 0, 0, 0, 0] }, examples: 0 };
-  const DEFAULT_PREFERENCE_STATS = { predictions: 0, correct: 0 };
+  const FEATURE_COUNT = 12;
+  const emptyWeights = () => Array(FEATURE_COUNT).fill(0);
+  const DEFAULT_PREFERENCE_MODEL = { version: 2, weights: { useful: emptyWeights(), mixed: emptyWeights(), slop: emptyWeights() }, examples: 0 };
+  const DEFAULT_PREFERENCE_STATS = { version: 2, predictions: 0, correct: 0, byLabel: { useful: { predictions: 0, correct: 0 }, mixed: { predictions: 0, correct: 0 }, slop: { predictions: 0, correct: 0 } } };
 
   function featureVector(text) {
     const normalized = text.toLowerCase();
     const count = (terms) => terms.reduce((n, term) => n + (normalized.includes(term.toLowerCase()) ? 1 : 0), 0);
-    return [1, Math.min(count(signalTerms) / 5, 1), Math.min(count(evidenceTerms) / 2, 1), /\b\d+(?:\.\d+)?\s?(?:%|ms|seconds|tokens|x)\b/i.test(text) ? 1 : 0, Math.min(count(hypeTerms) / 3, 1), Math.min(text.length / 3000, 1)];
+    const words = normalized.match(/[a-z][a-z-]{2,}/g) || [];
+    const uniqueWords = new Set(words).size;
+    const linkCount = (text.match(/https?:\/\/\S+/gi) || []).length;
+    return [
+      1,
+      Math.min(count(signalTerms) / 5, 1),
+      Math.min(count(evidenceTerms) / 2, 1),
+      /\b\d+(?:\.\d+)?\s?(?:%|ms|seconds|tokens|x)\b/i.test(text) ? 1 : 0,
+      Math.min(count(hypeTerms) / 3, 1),
+      Math.min(text.length / 3000, 1),
+      Math.min(linkCount / 2, 1),
+      /```|\b(const|function|class|import|curl|npm|pip|sql)\b/i.test(text) ? 1 : 0,
+      /\[\d+\]|\b(according to|study|source|methodology)\b/i.test(text) ? 1 : 0,
+      /\b(i built|i tested|we shipped|our team|in production|my experience)\b/i.test(text) ? 1 : 0,
+      /\b(comment|like|share|repost|follow|drop a|agree\?)\b/i.test(text) ? 1 : 0,
+      words.length ? Math.min(uniqueWords / words.length, 1) : 0
+    ];
   }
 
   function normalizeModel(model) {
-    return model?.weights && !Array.isArray(model.weights) ? model : DEFAULT_PREFERENCE_MODEL;
+    if (!model?.weights || Array.isArray(model.weights)) return DEFAULT_PREFERENCE_MODEL;
+    return {
+      version: 2,
+      weights: Object.fromEntries(CLASSES.map((name) => [name, [...(model.weights[name] || []), ...emptyWeights()].slice(0, FEATURE_COUNT)])),
+      examples: model.examples || 0
+    };
+  }
+
+  function normalizeStats(stats) {
+    return stats?.version === 2 ? stats : DEFAULT_PREFERENCE_STATS;
   }
 
   function preferenceProbabilities(features, rawModel) {
@@ -136,23 +166,45 @@
     return Object.fromEntries(CLASSES.map((name) => [name, totals[name] / denominator]));
   }
 
-  function trainPreference(features, vote) {
-    chrome.storage.local.get({ preferenceModel: DEFAULT_PREFERENCE_MODEL, preferenceStats: DEFAULT_PREFERENCE_STATS }, ({ preferenceModel, preferenceStats }) => {
-      const stored = normalizeModel(preferenceModel);
-      const model = { weights: Object.fromEntries(CLASSES.map((name) => [name, [...stored.weights[name]]])), examples: stored.examples };
-      const probabilities = preferenceProbabilities(features, model);
-      const predictedVote = CLASSES.reduce((best, name) => probabilities[name] > probabilities[best] ? name : best, CLASSES[0]);
-      const stats = {
-        predictions: preferenceStats.predictions + 1,
-        correct: preferenceStats.correct + (predictedVote === vote ? 1 : 0)
-      };
-      const rate = 0.18;
-      CLASSES.forEach((name) => {
-        const target = name === vote ? 1 : 0;
-        model.weights[name] = model.weights[name].map((weight, index) => weight + rate * (target - probabilities[name]) * features[index]);
+  function trainOne(model, features, vote, rate) {
+    const probabilities = preferenceProbabilities(features, model);
+    CLASSES.forEach((name) => {
+      const target = name === vote ? 1 : 0;
+      model.weights[name] = model.weights[name].map((weight, index) => weight + rate * (target - probabilities[name]) * features[index]);
+    });
+  }
+
+  function retrain(examples) {
+    const model = normalizeModel(DEFAULT_PREFERENCE_MODEL);
+    const counts = Object.fromEntries(CLASSES.map((name) => [name, examples.filter((item) => item.vote === name).length]));
+    for (let epoch = 0; epoch < 8; epoch += 1) {
+      examples.forEach((example) => {
+        // Balance the dominant Useful class so lower-signal examples retain
+        // influence without making the filter needlessly aggressive.
+        const classWeight = Math.min(2.2, examples.length / Math.max(1, CLASSES.length * counts[example.vote]));
+        trainOne(model, example.features, example.vote, 0.1 * classWeight);
       });
-      model.examples += 1;
-      chrome.storage.local.set({ preferenceModel: model, preferenceStats: stats });
+    }
+    model.examples = examples.length;
+    return model;
+  }
+
+  function trainPreference(features, vote) {
+    chrome.storage.local.get({ preferenceModel: DEFAULT_PREFERENCE_MODEL, preferenceStats: DEFAULT_PREFERENCE_STATS, trainingExamples: [] }, ({ preferenceModel, preferenceStats, trainingExamples }) => {
+      const modelBeforeVote = normalizeModel(preferenceModel);
+      const probabilities = preferenceProbabilities(features, modelBeforeVote);
+      const predictedVote = CLASSES.reduce((best, name) => probabilities[name] > probabilities[best] ? name : best, CLASSES[0]);
+      const priorStats = normalizeStats(preferenceStats);
+      const byLabel = structuredClone(priorStats.byLabel);
+      byLabel[vote] = { predictions: byLabel[vote].predictions + 1, correct: byLabel[vote].correct + (predictedVote === vote ? 1 : 0) };
+      const stats = { version: 2, predictions: priorStats.predictions + 1, correct: priorStats.correct + (predictedVote === vote ? 1 : 0), byLabel };
+      const examples = [...trainingExamples.slice(-399), { features, vote, savedAt: Date.now() }];
+      const model = examples.length >= 8 ? retrain(examples) : modelBeforeVote;
+      if (examples.length < 8) {
+        trainOne(model, features, vote, 0.14);
+        model.examples = examples.length;
+      }
+      chrome.storage.local.set({ preferenceModel: model, preferenceStats: stats, trainingExamples: examples });
     });
   }
 
