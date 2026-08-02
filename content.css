@@ -103,4 +103,6 @@
 .signal-filter-badge-x .signal-filter-bookmark-controls select { background: #172b3e; border-color: #4b7495; color: #edf7ff; color-scheme: dark; }
 .signal-filter-badge-x .signal-filter-bookmark-controls select option { background: #172b3e; color: #edf7ff; }
 .signal-filter-bookmarked { background: #d7f4e3; border-radius: 999px; color: #0a6036; font: 700 12px/1 system-ui, sans-serif; padding: 6px 9px; }
+.signal-filter-bookmark-error { background: #fde7e7; border-radius: 999px; color: #a12222; font: 700 12px/1 system-ui, sans-serif; padding: 6px 9px; }
 @media (prefers-color-scheme: dark) { .signal-filter-bookmarked { background: #144c32; color: #a6f3c7; } }
+@media (prefers-color-scheme: dark) { .signal-filter-bookmark-error { background: #5a2328; color: #ffc3c7; } }

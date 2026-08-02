@@ -278,9 +278,15 @@
 
   function saveBookmark(post, folder, controls) {
     const preview = (post.innerText || "").replace(/\s+/g, " ").trim().slice(0, 220);
-    const isXPost = post.matches("article[data-testid='tweet']");
+    const isXPost = post.matches("article[data-testid='tweet']") || Boolean(post.closest("article[data-testid='tweet']"));
+    // X adds timestamp query parameters to some in-post links. They are useful
+    // for video deep-links but not as a bookmark identity, so retain only the
+    // canonical status URL.
+    const xStatusLink = isXPost
+      ? [...post.querySelectorAll("a[href*='/status/']")].map((link) => link.href).find((href) => /\/status\/\d+/.test(href))
+      : undefined;
     const directLink = isXPost
-      ? post.querySelector("a[href*='/status/']")?.href
+      ? xStatusLink?.replace(/[?#].*$/, "")
       : post.querySelector("a[href*='/feed/update/']")?.href;
     const activityUrn = !isXPost && (post.getAttribute("data-urn") || post.getAttribute("data-activity-urn") || post.querySelector("[data-urn^='urn:li:activity:'], [data-activity-urn^='urn:li:activity:']")?.getAttribute("data-urn") || post.querySelector("[data-activity-urn^='urn:li:activity:']")?.getAttribute("data-activity-urn"));
     const activityLink = activityUrn?.startsWith("urn:li:activity:")
@@ -292,8 +298,15 @@
     const platform = isXPost ? "X" : "LinkedIn";
     // The service worker serializes saves from every open LinkedIn/X tab so a
     // simultaneous save cannot replace previously stored bookmarks.
+    controls.setAttribute("aria-busy", "true");
+    controls.textContent = "Saving…";
     chrome.runtime.sendMessage({ type: "save-bookmark", bookmark: { folder, platform, permalink, preview } }, (result) => {
-      if (chrome.runtime.lastError || !result?.saved) return;
+      controls.removeAttribute("aria-busy");
+      const failure = chrome.runtime.lastError?.message || result?.error;
+      if (failure || !result?.saved) {
+        controls.innerHTML = `<span class="signal-filter-bookmark-error">Couldn’t save — try again</span>`;
+        return;
+      }
       controls.innerHTML = `<span class="signal-filter-bookmarked">✓ ${result.existing ? "Already saved" : `Saved to ${folder}`}</span>`;
     });
   }
@@ -302,7 +315,11 @@
     const trigger = document.createElement("button");
     trigger.type = "button";
     trigger.textContent = "Save";
-    trigger.addEventListener("click", () => {
+    trigger.addEventListener("click", (event) => {
+      // X delegates clicks from the whole post card. Keep this interaction in
+      // the extension so it cannot be swallowed by (or trigger) the post UI.
+      event.preventDefault();
+      event.stopPropagation();
       chrome.storage.local.get({ bookmarkFolders: ["Inbox"] }, ({ bookmarkFolders }) => {
         const controls = document.createElement("span");
         controls.className = "signal-filter-bookmark-controls";
@@ -322,11 +339,14 @@
           saveBookmark(post, folder, controls);
           return true;
         };
-        save.addEventListener("click", () => {
+        save.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           if (select.value === "__new_folder__") createFolder();
           else saveBookmark(post, select.value, controls);
         });
-        select.addEventListener("change", () => {
+        select.addEventListener("change", (event) => {
+          event.stopPropagation();
           if (select.value !== "__new_folder__") return;
           createFolder();
         });
