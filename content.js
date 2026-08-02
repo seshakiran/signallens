@@ -307,6 +307,12 @@
     });
   }
 
+  let rescanTimer;
+  function scheduleRescan(delay = 300) {
+    clearTimeout(rescanTimer);
+    rescanTimer = setTimeout(() => scan(document), delay);
+  }
+
   addStatus();
   scan();
   chrome.storage.local.get({ enabled: true }, ({ enabled: saved }) => {
@@ -332,11 +338,23 @@
   });
   new MutationObserver((changes) => {
     for (const change of changes) {
+      if (change.type === "attributes") scheduleRescan();
       change.addedNodes.forEach((node) => {
         if (node.nodeType !== Node.ELEMENT_NODE) return;
         if (POST_SELECTORS.some((selector) => node.matches?.(selector))) inspect(node);
         scan(node);
+        scheduleRescan();
       });
     }
-  }).observe(document.body, { childList: true, subtree: true });
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-hidden"] });
+
+  // LinkedIn can reveal a preloaded batch after its “New posts” button is
+  // clicked without adding fresh nodes. Rescan the whole feed after that UI
+  // transition so newly revealed cards receive their controls immediately.
+  document.addEventListener("click", (event) => {
+    const target = event.target.closest("button, [role='button']");
+    if (!target || !/new posts/i.test(target.innerText || target.getAttribute("aria-label") || "")) return;
+    scheduleRescan(250);
+    setTimeout(() => scan(document), 1100);
+  }, true);
 })();
