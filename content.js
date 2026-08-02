@@ -189,16 +189,28 @@
     return model;
   }
 
-  function trainPreference(features, vote) {
+  function trainPreference(features, vote, feedbackId) {
     chrome.storage.local.get({ preferenceModel: DEFAULT_PREFERENCE_MODEL, preferenceStats: DEFAULT_PREFERENCE_STATS, trainingExamples: [] }, ({ preferenceModel, preferenceStats, trainingExamples }) => {
       const modelBeforeVote = normalizeModel(preferenceModel);
       const probabilities = preferenceProbabilities(features, modelBeforeVote);
-      const predictedVote = CLASSES.reduce((best, name) => probabilities[name] > probabilities[best] ? name : best, CLASSES[0]);
+      const newPrediction = CLASSES.reduce((best, name) => probabilities[name] > probabilities[best] ? name : best, CLASSES[0]);
       const priorStats = normalizeStats(preferenceStats);
       const byLabel = structuredClone(priorStats.byLabel);
-      byLabel[vote] = { predictions: byLabel[vote].predictions + 1, correct: byLabel[vote].correct + (predictedVote === vote ? 1 : 0) };
-      const stats = { version: 2, predictions: priorStats.predictions + 1, correct: priorStats.correct + (predictedVote === vote ? 1 : 0), byLabel };
-      const examples = [...trainingExamples.slice(-399), { features, vote, savedAt: Date.now() }];
+      const existingIndex = trainingExamples.findIndex((example) => example.id === feedbackId);
+      const existing = existingIndex >= 0 ? trainingExamples[existingIndex] : undefined;
+      const predictedVote = existing?.prediction || newPrediction;
+      let stats;
+      let examples;
+      if (existing) {
+        byLabel[existing.vote] = { predictions: byLabel[existing.vote].predictions - 1, correct: byLabel[existing.vote].correct - (predictedVote === existing.vote ? 1 : 0) };
+        byLabel[vote] = { predictions: byLabel[vote].predictions + 1, correct: byLabel[vote].correct + (predictedVote === vote ? 1 : 0) };
+        stats = { version: 2, predictions: priorStats.predictions, correct: priorStats.correct - (predictedVote === existing.vote ? 1 : 0) + (predictedVote === vote ? 1 : 0), byLabel };
+        examples = trainingExamples.map((example) => example.id === feedbackId ? { ...example, vote, savedAt: Date.now() } : example);
+      } else {
+        byLabel[vote] = { predictions: byLabel[vote].predictions + 1, correct: byLabel[vote].correct + (predictedVote === vote ? 1 : 0) };
+        stats = { version: 2, predictions: priorStats.predictions + 1, correct: priorStats.correct + (predictedVote === vote ? 1 : 0), byLabel };
+        examples = [...trainingExamples.slice(-399), { id: feedbackId, features, vote, prediction: predictedVote, savedAt: Date.now() }];
+      }
       const model = examples.length >= 8 ? retrain(examples) : modelBeforeVote;
       if (examples.length < 8) {
         trainOne(model, features, vote, 0.14);
@@ -219,6 +231,12 @@
   }
 
   function label(post, value, message = "Filtered as low-signal content") {
+    const existing = post.previousElementSibling?.matches(".signal-filter-notice") ? post.previousElementSibling : null;
+    if (existing) {
+      existing.querySelector("span").textContent = message;
+      post.classList.add(HIDDEN);
+      return;
+    }
     const notice = document.createElement("div");
     notice.className = "signal-filter-notice";
     notice.innerHTML = `<span>${message}</span><button type="button">Show post</button>`;
@@ -236,15 +254,21 @@
     });
   }
 
-  function recordFeedback(kind, features) {
+  function recordFeedback(kind, features, post) {
+    const previous = post.dataset.signalFilterVote;
+    if (previous === kind) return false;
     chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, (counts) => {
       chrome.storage.local.set({
-        usefulVotes: counts.usefulVotes + (kind === "useful" ? 1 : 0),
-        slopVotes: counts.slopVotes + (kind === "slop" ? 1 : 0),
-        mixedVotes: (counts.mixedVotes || 0) + (kind === "mixed" ? 1 : 0)
+        usefulVotes: Math.max(0, counts.usefulVotes + (kind === "useful" ? 1 : 0) - (previous === "useful" ? 1 : 0)),
+        slopVotes: Math.max(0, counts.slopVotes + (kind === "slop" ? 1 : 0) - (previous === "slop" ? 1 : 0)),
+        mixedVotes: Math.max(0, (counts.mixedVotes || 0) + (kind === "mixed" ? 1 : 0) - (previous === "mixed" ? 1 : 0))
       });
     });
-    trainPreference(features, kind);
+    const feedbackId = post.dataset.signalFilterFeedbackId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    post.dataset.signalFilterFeedbackId = feedbackId;
+    post.dataset.signalFilterVote = kind;
+    trainPreference(features, kind, feedbackId);
+    return true;
   }
 
   function saveBookmark(post, folder, controls) {
@@ -271,11 +295,29 @@
         const controls = document.createElement("span");
         controls.className = "signal-filter-bookmark-controls";
         const select = document.createElement("select");
+        select.add(new Option("+ Create new folder…", "__new_folder__"));
         bookmarkFolders.forEach((folder) => select.add(new Option(folder, folder)));
+        select.value = bookmarkFolders[0] || "Inbox";
         const save = document.createElement("button");
         save.type = "button";
         save.textContent = "Save here";
-        save.addEventListener("click", () => saveBookmark(post, select.value, controls));
+        const createFolder = () => {
+          const folder = prompt("New bookmark folder")?.trim().slice(0, 40);
+          if (!folder) {
+            select.value = bookmarkFolders[0] || "Inbox";
+            return false;
+          }
+          saveBookmark(post, folder, controls);
+          return true;
+        };
+        save.addEventListener("click", () => {
+          if (select.value === "__new_folder__") createFolder();
+          else saveBookmark(post, select.value, controls);
+        });
+        select.addEventListener("change", () => {
+          if (select.value !== "__new_folder__") return;
+          createFolder();
+        });
         controls.append(select, save);
         trigger.replaceWith(controls);
       });
@@ -298,11 +340,13 @@
     badge.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => {
         const vote = button.dataset.vote;
-        recordFeedback(vote, features);
+        if (!recordFeedback(vote, features, post)) return;
         badge.querySelector("span").textContent = vote === "useful" ? "Marked useful" : vote === "mixed" ? "Marked mixed" : "Marked low signal";
-        // Keep Save available after a Useful vote. Feedback and bookmarking are
-        // independent actions: a valuable post may still be worth saving.
-        badge.querySelectorAll("button[data-vote]").forEach((item) => item.remove());
+        badge.querySelectorAll("button[data-vote]").forEach((item) => item.classList.toggle("is-selected", item.dataset.vote === vote));
+        if (vote === "useful") {
+          post.classList.remove(HIDDEN);
+          if (post.previousElementSibling?.matches(".signal-filter-notice")) post.previousElementSibling.remove();
+        }
         if (vote === "slop") label(post, value);
         if (vote === "mixed") label(post, value, "Hidden as mixed relevance");
       });

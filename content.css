@@ -93,8 +93,10 @@
   font-size: 12px;
   padding: 4px 8px;
 }
+.signal-filter-badge button.is-selected { background: #0a66c2; border-color: #0a66c2; color: #ffffff; }
 .signal-filter-badge-x { background: #111a27; border: 1px solid #294865; border-left: 3px solid #2b8ad6; border-radius: 12px; color: #d8e8f7; margin: 8px 0 10px; max-width: 100%; padding: 7px 9px; }
 .signal-filter-badge-x button { background: #172b3e; border-color: #3a6689; color: #b9dcf8; }
+.signal-filter-badge-x button.is-selected { background: #2b8ad6; border-color: #2b8ad6; color: #07131d; }
 .signal-filter-bookmark-controls { align-items: center; display: inline-flex; gap: 5px; }
 .signal-filter-bookmark-controls select { appearance: auto; background: #ffffff; border: 1px solid #9db8d0; border-radius: 10px; color: #173b5b; color-scheme: light; font-size: 12px; font-weight: 650; max-width: 110px; padding: 3px 5px; }
 .signal-filter-bookmark-controls select option { background: #ffffff; color: #173b5b; }
