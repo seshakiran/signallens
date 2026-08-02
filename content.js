@@ -400,7 +400,7 @@
 
   function inspect(post) {
     const isXPost = post.matches("article[data-testid='tweet']");
-    if (!enabled || (isXPost ? !xEnabled : !linkedInEnabled)) return;
+    if (!enabled || (isXPost ? !xEnabled || !isXHomeTimeline() : !linkedInEnabled)) return;
     // X virtualizes its timeline and may reuse an existing article for a
     // different tweet. Reprocess only when its underlying content changes.
     const cleanPost = post.cloneNode(true);
@@ -449,7 +449,7 @@
   }
 
   function scan(root = document) {
-    if (!enabled || (location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com") ? !xEnabled : !linkedInEnabled)) return;
+    if (!canScanCurrentPage()) return;
     // Mutation callbacks can hand us the post card itself rather than its
     // parent. querySelectorAll only searches descendants, so inspect the root
     // before looking through its children.
@@ -517,12 +517,28 @@
     return location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com") ? xEnabled : linkedInEnabled;
   }
 
+  function isXHomeTimeline() {
+    const isX = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
+    return !isX || location.pathname === "/home";
+  }
+
+  function canScanCurrentPage() {
+    return enabled && isCurrentSiteEnabled() && isXHomeTimeline();
+  }
+
+  function clearXDetailUi() {
+    if (isXHomeTimeline()) return;
+    clearCurrentSite();
+    document.querySelector("#signal-filter-status")?.remove();
+  }
+
   chrome.storage.local.get({ enabled: true, linkedInEnabled: true, xEnabled: true }, (settings) => {
     const saved = settings.enabled;
     enabled = saved;
     linkedInEnabled = settings.linkedInEnabled;
     xEnabled = settings.xEnabled;
-    if (enabled && isCurrentSiteEnabled()) scan();
+    if (canScanCurrentPage()) scan();
+    else clearXDetailUi();
   });
   chrome.storage.local.get({ profileSettings: { topics: [] } }, ({ profileSettings }) => { interestTopics = profileSettings.topics || []; });
   chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
@@ -536,7 +552,7 @@
     if (changes.linkedInEnabled) linkedInEnabled = changes.linkedInEnabled.newValue;
     if (changes.xEnabled) xEnabled = changes.xEnabled.newValue;
     if (!changes.enabled && !changes.linkedInEnabled && !changes.xEnabled) return;
-    if (!enabled || !isCurrentSiteEnabled()) {
+    if (!canScanCurrentPage()) {
       clearCurrentSite();
     } else {
       clearCurrentSite();
@@ -591,6 +607,9 @@
   }
   if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
     const rescanAfterNavigation = () => {
+      clearXDetailUi();
+      if (!canScanCurrentPage()) return;
+      addStatus();
       scheduleRescan(0);
       setTimeout(() => scan(document), 300);
       setTimeout(() => scan(document), 1100);
