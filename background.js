@@ -39,7 +39,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 async function classifyWithGemma(text) {
-  const task = gemmaQueue.then(() => classify(text));
+  const { llmConfig = { provider: 'ollama', endpoint: OLLAMA_URLS[0], model: MODEL, apiKey: '' } } = await chrome.storage.local.get({ llmConfig: { provider: 'ollama', endpoint: OLLAMA_URLS[0], model: MODEL, apiKey: '' } });
+  const task = gemmaQueue.then(() => classify(text, llmConfig));
   gemmaQueue = task.catch(() => undefined);
   try {
     const result = await task;
@@ -93,14 +94,16 @@ async function recordAssessmentSafely(key) {
   return { counted: true };
 }
 
-async function classify(text) {
+async function classify(text, config) {
   // Keep local inference responsive on long social posts.
   text = text.slice(0, 4500);
   const prompt = `You are a strict filter for a technical LinkedIn reader. Judge value to the reader, never value for engagement, marketing, or content generation.\n\nUseful: concrete and supportable claims; technical detail; examples; measurements; code; primary sources; original analysis; clearly scoped experience.\nSlop: vague promotion, generic motivation, recycled advice, engagement bait, unsupported grand claims, or a long list of buzzwords without evidence.\n\nExample: “Revolutionary AI changes everything. Comment YES.” = slop.\nExample: “Our retrieval evaluation reduced unsupported answers from 18% to 7%; methodology linked.” = useful.\n\nReturn only JSON: {"label":"useful"|"slop"|"uncertain","reason":"under 12 words"}.\n\nPost:\n${text.slice(0, 12000)}`;
-  const request = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: MODEL, prompt, stream: false, format: "json", keep_alive: "15m", options: { temperature: 0, num_predict: 80 } }) };
+  if (config.provider === 'openai' || config.provider === 'compatible') return classifyOpenAI(prompt, config);
+  if (config.provider === 'anthropic') return classifyAnthropic(prompt, config);
+  const request = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: config.model || MODEL, prompt, stream: false, format: "json", keep_alive: "15m", options: { temperature: 0, num_predict: 80 } }) };
   let response;
   let lastError;
-  for (const url of OLLAMA_URLS) {
+  for (const url of config.endpoint ? [config.endpoint] : OLLAMA_URLS) {
     try {
       const candidate = await fetch(url, request);
       if (candidate.ok) {
@@ -118,3 +121,6 @@ async function classify(text) {
   if (!['useful', 'slop', 'uncertain'].includes(result.label)) throw new Error("Gemma returned an invalid label");
   return result;
 }
+
+async function classifyOpenAI(prompt, config) { const response = await fetch(config.endpoint || 'https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` }, body: JSON.stringify({ model: config.model, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' }, temperature: 0 }) }); if (!response.ok) throw new Error(`Provider returned ${response.status}`); return JSON.parse((await response.json()).choices[0].message.content); }
+async function classifyAnthropic(prompt, config) { const response = await fetch(config.endpoint || 'https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': config.apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: config.model, max_tokens: 120, messages: [{ role: 'user', content: prompt }] }) }); if (!response.ok) throw new Error(`Provider returned ${response.status}`); return JSON.parse((await response.json()).content[0].text); }

@@ -20,8 +20,10 @@ const addFolder = document.querySelector('#addFolder');
 const folderList = document.querySelector('#folderList');
 const themeToggle = document.querySelector('#themeToggle');
 const dashboardView = document.querySelector('#dashboardView');
+const onboardingView = document.querySelector('#onboardingView');
 const featuresView = document.querySelector('#featuresView');
 const learningView = document.querySelector('#learningView');
+const settingsView = document.querySelector('#settingsView');
 const bookmarkLibrary = document.querySelector('#bookmarkLibrary');
 const bookmarkItems = document.querySelector('#bookmarkItems');
 function renderAccuracy({ version, predictions = 0, correct = 0, byLabel = {} }) {
@@ -64,12 +66,15 @@ function renderGemmaStatus(status) {
   gemmaStatus.classList.toggle('is-error', failed);
 }
 function setView(view, { completeTour = true } = {}) {
+  onboardingView.hidden = view !== 'onboarding';
   dashboardView.hidden = view !== 'dashboard';
   featuresView.hidden = view !== 'features';
   learningView.hidden = view !== 'learning';
+  settingsView.hidden = view !== 'settings';
   bookmarkLibrary.hidden = view !== 'library';
   document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('is-active', item.dataset.view === view));
-  if (completeTour && view !== 'features') chrome.storage.local.set({ featureTourSeen: true });
+  document.body.classList.toggle('is-onboarding', view === 'onboarding');
+  if (completeTour && view !== 'features' && view !== 'onboarding') chrome.storage.local.set({ featureTourSeen: true });
 }
 function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;
@@ -111,11 +116,18 @@ chrome.storage.local.get({ preferenceModel: { examples: 0 } }, ({ preferenceMode
 chrome.storage.local.get({ preferenceStats: { predictions: 0, correct: 0 } }, ({ preferenceStats }) => renderAccuracy(preferenceStats));
 chrome.storage.local.get({ trainingExamples: [] }, ({ trainingExamples }) => renderLearningProgress(trainingExamples));
 chrome.storage.local.get({ gemmaStatus: null }, ({ gemmaStatus: status }) => renderGemmaStatus(status));
-chrome.storage.local.get({ featureTourSeen: false }, ({ featureTourSeen }) => {
-  if (!featureTourSeen) setView('features', { completeTour: false });
+chrome.storage.local.get({ onboardingCompleted: false }, ({ onboardingCompleted }) => {
+  if (!onboardingCompleted) setView('onboarding', { completeTour: false });
 });
 chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
 chrome.storage.local.get({ themePreference: 'system' }, ({ themePreference }) => applyTheme(themePreference));
+const llmConfig = { provider: 'ollama', endpoint: 'http://127.0.0.1:11434/api/generate', model: 'gemma4:e4b', apiKey: '' };
+chrome.storage.local.get({ llmConfig }, ({ llmConfig: config }) => { Object.entries({ llmProvider: config.provider, llmEndpoint: config.endpoint, llmModel: config.model, llmApiKey: config.apiKey }).forEach(([id, value]) => { document.querySelector(`#${id}`).value = value || ''; }); });
+document.querySelector('#saveLlmConfig').addEventListener('click', async () => {
+  const config = { provider: document.querySelector('#llmProvider').value, endpoint: document.querySelector('#llmEndpoint').value.trim(), model: document.querySelector('#llmModel').value.trim(), apiKey: document.querySelector('#llmApiKey').value.trim() };
+  try { const url = new URL(config.endpoint); await chrome.permissions.request({ origins: [`${url.protocol}//${url.host}/*`] }); } catch (_) {}
+  chrome.storage.local.set({ llmConfig: config }); document.querySelector('#llmConfigStatus').textContent = `${config.provider} saved locally.`;
+});
 themeToggle.addEventListener('click', () => chrome.storage.local.set({ themePreference: document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark' }));
 addFolder.addEventListener('click', () => {
   const folder = folderName.value.trim().slice(0, 40);
@@ -142,6 +154,10 @@ document.querySelector('.view-tabs').addEventListener('click', (event) => {
   setView(button.dataset.view);
 });
 document.querySelector('#startFiltering').addEventListener('click', () => setView('dashboard'));
+document.querySelector('#completeOnboarding').addEventListener('click', () => {
+  chrome.storage.local.set({ onboardingCompleted: true, featureTourSeen: true, profileSettings: { persona: document.querySelector('#persona').value, topics: document.querySelector('#interestTopics').value.split(',').map((item) => item.trim()).filter(Boolean), linkedinProfile: document.querySelector('#linkedinProfile').value.trim() } });
+  setView('dashboard');
+});
 document.querySelector('.export-actions').addEventListener('click', (event) => {
   const button = event.target.closest('[data-export]');
   if (button) chrome.runtime.sendMessage({ type: 'export-bookmarks', format: button.dataset.export });

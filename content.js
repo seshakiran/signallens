@@ -13,6 +13,7 @@
   const countedAssessments = new Set();
   const liveBadges = new WeakSet();
   let enabled = true;
+  let interestTopics = [];
   let sensitivity = 0;
 
   function hashText(value) {
@@ -228,7 +229,8 @@
     const evidence = count(evidenceTerms);
     const hype = count(hypeTerms);
     const hasMetric = /\b\d+(?:\.\d+)?\s?(?:%|ms|seconds|tokens|x)\b/i.test(text);
-    return signal * 2 + evidence * 3 + (hasMetric ? 2 : 0) - hype * 3;
+    const interest = interestTopics.reduce((total, topic) => total + (normalized.includes(topic.toLowerCase()) ? 1 : 0), 0);
+    return signal * 2 + evidence * 3 + interest * 2 + (hasMetric ? 2 : 0) - hype * 3;
   }
 
   function label(post, value, message = "Filtered as low-signal content") {
@@ -507,9 +509,11 @@
     enabled = saved;
     if (enabled) scan();
   });
+  chrome.storage.local.get({ profileSettings: { topics: [] } }, ({ profileSettings }) => { interestTopics = profileSettings.topics || []; });
   chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.themePreference) applyDashboardTheme(changes.themePreference.newValue);
+    if (changes.profileSettings) interestTopics = changes.profileSettings.newValue.topics || [];
     if (changes.usefulVotes || changes.slopVotes) {
       chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
     }

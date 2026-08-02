@@ -4,6 +4,7 @@
   "version": "0.5.0",
   "description": "Locally hides low-substance AI hype from LinkedIn's feed.",
   "permissions": ["storage", "downloads"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "host_permissions": ["http://127.0.0.1:11434/*", "http://localhost:11434/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
