@@ -59,17 +59,19 @@ JSON is the preferred handoff format for a future account-backed sync or a direc
 
 ## Architecture
 
-```text
-Visible LinkedIn / X post
-          │
-          ├── Local rule score ───────────────┐
-          │                                   │
-          ├── Local Gemma 4 (optional) ───────┼──► Useful / Mixed / Low signal
-          │                                   │
-          └── Your label ─► local preference model
-                                              │
-                                    reversible show / hide decision
+```mermaid
+flowchart LR
+  Post[Visible LinkedIn / X post] --> Scan[Content-script scanner]
+  Scan --> Rules[Local rule score]
+  Rules --> Controls[Useful · Mixed · Low signal · Save]
+  Controls --> Learner[Local preference learner]
+  Learner <--> Storage[(Chrome storage)]
+  Scan -. optional .-> Gemma[Local Ollama + Gemma 4]
+  Gemma --> Controls
+  Controls --> Decision[Reversible show / hide]
 ```
+
+The scanner is designed for virtualized feeds: it rescans after feed updates, in-app navigation, and tab activation so controls remain attached without a page refresh. See the [full architecture document](docs/ARCHITECTURE.md) for component responsibilities, data boundaries, and the hosted-phase plan.
 
 ## Roadmap
 
