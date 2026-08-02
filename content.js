@@ -274,9 +274,16 @@
   function saveBookmark(post, folder, controls) {
     const preview = (post.innerText || "").replace(/\s+/g, " ").trim().slice(0, 220);
     const isXPost = post.matches("article[data-testid='tweet']");
-    const permalink = isXPost
-      ? post.querySelector("a[href*='/status/']")?.href || location.href
-      : post.querySelector("a[href*='/feed/update/']")?.href || location.href;
+    const directLink = isXPost
+      ? post.querySelector("a[href*='/status/']")?.href
+      : post.querySelector("a[href*='/feed/update/']")?.href;
+    const activityUrn = !isXPost && (post.getAttribute("data-urn") || post.getAttribute("data-activity-urn") || post.querySelector("[data-urn^='urn:li:activity:'], [data-activity-urn^='urn:li:activity:']")?.getAttribute("data-urn") || post.querySelector("[data-activity-urn^='urn:li:activity:']")?.getAttribute("data-activity-urn"));
+    const activityLink = activityUrn?.startsWith("urn:li:activity:")
+      ? `${location.origin}/feed/update/${activityUrn}/`
+      : undefined;
+    // A unique local fallback prevents different cards from sharing the feed
+    // page URL when a site temporarily withholds its canonical permalink.
+    const permalink = directLink || activityLink || `${location.href.split("#")[0]}#signallens-${hashText(preview)}`;
     const platform = isXPost ? "X" : "LinkedIn";
     // The service worker serializes saves from every open LinkedIn/X tab so a
     // simultaneous save cannot replace previously stored bookmarks.
