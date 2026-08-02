@@ -44,10 +44,11 @@ async function classifyWithGemma(text) {
   gemmaQueue = task.catch(() => undefined);
   try {
     const result = await task;
-    await chrome.storage.local.set({ gemmaStatus: { state: 'ready', detail: 'Gemma 4 is responding locally', updatedAt: Date.now() } });
+    const providerName = { ollama: 'Ollama', compatible: 'Local compatible server', openai: 'OpenAI', anthropic: 'Anthropic' }[llmConfig.provider] || 'AI provider';
+    await chrome.storage.local.set({ gemmaStatus: { state: 'ready', detail: `${providerName} is responding`, updatedAt: Date.now() } });
     return result;
   } catch (error) {
-    await chrome.storage.local.set({ gemmaStatus: { state: 'error', detail: `Gemma 4: ${error.message}`, updatedAt: Date.now() } });
+    await chrome.storage.local.set({ gemmaStatus: { state: 'error', detail: `AI connection: ${error.message}`, updatedAt: Date.now() } });
     throw error;
   }
 }

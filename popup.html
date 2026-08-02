@@ -9,7 +9,7 @@
         <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">☀</button>
         <span class="local-chip">Local</span>
       </header>
-      <section id="onboardingView" class="onboarding view-panel" hidden><span class="eyebrow">WELCOME TO SIGNALLENS</span><h2>What do you want more of?</h2><p>Start with a persona, then refine the topics SignalLens should favor. Your profile URL is optional and stays on this device.</p><label>Persona<select id="persona"><option value="technical">Technical builder</option><option value="leader">AI leader</option><option value="research">Researcher</option></select></label><label>Topics, comma separated<input id="interestTopics" value="AI, LLMs, agents, machine learning, evaluation, developer tools"></label><label>LinkedIn profile URL (optional)<input id="linkedinProfile" placeholder="https://www.linkedin.com/in/you"></label><button id="completeOnboarding" class="primary-action" type="button">Set up SignalLens <span>→</span></button></section>
+      <section id="onboardingView" class="onboarding view-panel" hidden><span class="eyebrow">WELCOME TO SIGNALLENS</span><h2>What do you want more of?</h2><p>Choose a persona, then pick the topics you want SignalLens to favor. Your profile URL is optional and stays on this device.</p><label>Persona<select id="persona"><option value="technical">Technical builder</option><option value="research">Researcher</option><option value="product">Product leader</option><option value="founder">Founder / operator</option><option value="executive">Executive</option><option value="investor">Investor</option><option value="security">Security practitioner</option><option value="data">Data professional</option><option value="designer">Designer</option><option value="career">Career builder</option><option value="creator">Creator / marketer</option><option value="general">Curious generalist</option></select></label><div><label>Topics for your persona</label><div id="topicChoices" class="topic-choices"></div></div><label>LinkedIn profile URL (optional)<input id="linkedinProfile" placeholder="https://www.linkedin.com/in/you"></label><button id="completeOnboarding" class="primary-action" type="button">Set up SignalLens <span>→</span></button></section>
       <nav class="view-tabs"><button class="is-active" data-view="dashboard" type="button">Dashboard</button><button data-view="learning" type="button">Learning</button><button data-view="library" type="button">Bookmarks</button><button data-view="settings" type="button">Settings</button><button data-view="features" type="button">Features</button></nav>
       <div id="dashboardView" class="dashboard-grid view-panel">
         <section class="control-card">
@@ -23,7 +23,7 @@
           <h2>How it decides</h2>
           <p><b>Keeps:</b> technical terms, metrics, papers, source links, code, and benchmarks.</p>
           <p><b>Filters:</b> vague superlatives, unsupported claims, and engagement-bait phrases.</p>
-          <p class="note">Rule-based locally, with Gemma 4 as a private second opinion.</p>
+          <p class="note">Rule-based locally, with your chosen AI as a second opinion.</p>
         </section>
       </div>
       <section id="featuresView" class="features-view view-panel" hidden>
@@ -44,7 +44,7 @@
       <section id="learningView" class="learning-card view-panel" hidden>
         <h2>Personal learning</h2>
         <p class="learning-intro">Your labels teach SignalLens what counts as valuable to you. It stores feature vectors locally, never post text.</p>
-        <p id="gemmaStatus" class="gemma-status">Gemma 4 status: waiting for a local read</p>
+        <p id="gemmaStatus" class="gemma-status">AI connection status: waiting for a read</p>
         <p class="votes"><span id="usefulVotes">0</span> useful · <span id="mixedVotes">0</span> mixed · <span id="slopVotes">0</span> low signal</p>
         <p class="votes"><span id="preferenceExamples">0</span> trainable examples · personal filtering after 12</p>
         <section class="learning-progress" aria-live="polite">

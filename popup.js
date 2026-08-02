@@ -61,7 +61,7 @@ function renderLearningProgress(examples = []) {
 function renderGemmaStatus(status) {
   const ready = status?.state === 'ready';
   const failed = status?.state === 'error';
-  gemmaStatus.textContent = status?.detail || 'Gemma 4 status: waiting for a local read';
+  gemmaStatus.textContent = status?.detail || 'AI connection status: waiting for a read';
   gemmaStatus.classList.toggle('is-ready', ready);
   gemmaStatus.classList.toggle('is-error', failed);
 }
@@ -74,7 +74,7 @@ function setView(view, { completeTour = true } = {}) {
   bookmarkLibrary.hidden = view !== 'library';
   document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('is-active', item.dataset.view === view));
   document.body.classList.toggle('is-onboarding', view === 'onboarding');
-  if (completeTour && view !== 'features' && view !== 'onboarding') chrome.storage.local.set({ featureTourSeen: true });
+  if (completeTour && view !== 'onboarding') chrome.storage.local.set({ featureTourSeen: true });
 }
 function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;
@@ -116,7 +116,8 @@ chrome.storage.local.get({ preferenceModel: { examples: 0 } }, ({ preferenceMode
 chrome.storage.local.get({ preferenceStats: { predictions: 0, correct: 0 } }, ({ preferenceStats }) => renderAccuracy(preferenceStats));
 chrome.storage.local.get({ trainingExamples: [] }, ({ trainingExamples }) => renderLearningProgress(trainingExamples));
 chrome.storage.local.get({ gemmaStatus: null }, ({ gemmaStatus: status }) => renderGemmaStatus(status));
-chrome.storage.local.get({ onboardingCompleted: false }, ({ onboardingCompleted }) => {
+chrome.storage.local.get({ onboardingCompleted: false, featureTourSeen: true }, ({ onboardingCompleted, featureTourSeen }) => {
+  document.querySelector('[data-view="features"]').classList.toggle('is-new', !featureTourSeen);
   if (!onboardingCompleted) setView('onboarding', { completeTour: false });
 });
 chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
@@ -158,8 +159,16 @@ document.querySelector('.view-tabs').addEventListener('click', (event) => {
   setView(button.dataset.view);
 });
 document.querySelector('#startFiltering').addEventListener('click', () => setView('dashboard'));
+const TOPICS = ['AI strategy', 'LLMs', 'AI agents', 'Machine learning', 'Evaluation', 'Inference', 'Developer tools', 'Open source', 'Data engineering', 'Analytics', 'Cybersecurity', 'Cloud', 'DevOps', 'Product management', 'UX research', 'Design systems', 'Startups', 'Fundraising', 'Venture capital', 'Enterprise software', 'Leadership', 'Hiring', 'Career growth', 'Creator economy', 'Marketing', 'Sales', 'Finance', 'Embedded systems', 'Climate tech', 'Healthcare'];
+const PERSONAS = { technical: ['LLMs', 'AI agents', 'Inference', 'Developer tools', 'Open source', 'DevOps'], research: ['Machine learning', 'Evaluation', 'LLMs', 'AI agents', 'Open source', 'Healthcare'], product: ['Product management', 'UX research', 'AI strategy', 'Enterprise software', 'Analytics', 'Leadership'], founder: ['Startups', 'Fundraising', 'AI strategy', 'Sales', 'Marketing', 'Leadership'], executive: ['AI strategy', 'Enterprise software', 'Leadership', 'Cybersecurity', 'Cloud', 'Finance'], investor: ['Venture capital', 'Startups', 'AI strategy', 'Climate tech', 'Healthcare', 'Enterprise software'], security: ['Cybersecurity', 'Cloud', 'DevOps', 'AI agents', 'Embedded systems', 'Enterprise software'], data: ['Data engineering', 'Analytics', 'Machine learning', 'Cloud', 'Evaluation', 'Finance'], designer: ['UX research', 'Design systems', 'Product management', 'AI strategy', 'Creator economy', 'Marketing'], career: ['Career growth', 'Hiring', 'Leadership', 'Developer tools', 'Product management', 'AI strategy'], creator: ['Creator economy', 'Marketing', 'Sales', 'AI strategy', 'Design systems', 'Startups'], general: ['AI strategy', 'Climate tech', 'Healthcare', 'Finance', 'Leadership', 'Career growth'] };
+let selectedTopics = new Set(PERSONAS.technical);
+function renderTopics() { const persona = document.querySelector('#persona').value; const ordered = [...PERSONAS[persona], ...TOPICS.filter((topic) => !PERSONAS[persona].includes(topic))]; document.querySelector('#topicChoices').innerHTML = ordered.map((topic) => `<button class="topic-chip ${selectedTopics.has(topic) ? 'is-selected' : ''}" data-topic="${topic}" type="button">${topic}</button>`).join(''); }
+renderTopics();
+document.querySelector('#persona').addEventListener('change', (event) => { selectedTopics = new Set(PERSONAS[event.target.value]); renderTopics(); });
+document.querySelector('#topicChoices').addEventListener('click', (event) => { const topic = event.target.closest('[data-topic]')?.dataset.topic; if (!topic) return; selectedTopics.has(topic) ? selectedTopics.delete(topic) : selectedTopics.add(topic); renderTopics(); });
 document.querySelector('#completeOnboarding').addEventListener('click', () => {
-  chrome.storage.local.set({ onboardingCompleted: true, featureTourSeen: true, profileSettings: { persona: document.querySelector('#persona').value, topics: document.querySelector('#interestTopics').value.split(',').map((item) => item.trim()).filter(Boolean), linkedinProfile: document.querySelector('#linkedinProfile').value.trim() } });
+  chrome.storage.local.set({ onboardingCompleted: true, featureTourSeen: true, profileSettings: { persona: document.querySelector('#persona').value, topics: [...selectedTopics], linkedinProfile: document.querySelector('#linkedinProfile').value.trim() } });
+  document.querySelector('[data-view="features"]').classList.remove('is-new');
   setView('dashboard');
 });
 document.querySelector('.export-actions').addEventListener('click', (event) => {
