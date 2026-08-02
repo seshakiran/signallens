@@ -348,12 +348,14 @@
     }
   }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "aria-hidden"] });
 
-  // LinkedIn can reveal a preloaded batch after its “New posts” button is
-  // clicked without adding fresh nodes. Rescan the whole feed after that UI
-  // transition so newly revealed cards receive their controls immediately.
+  // LinkedIn and X can reveal preloaded posts without adding fresh nodes.
+  // Rescan after their live-feed controls so newly revealed cards receive
+  // controls immediately.
   document.addEventListener("click", (event) => {
     const target = event.target.closest("button, [role='button']");
-    if (!target || !/new posts/i.test(target.innerText || target.getAttribute("aria-label") || "")) return;
+    const action = target && (target.innerText || target.getAttribute("aria-label") || "");
+    const isLiveFeedAction = /new posts|show\s+\d+\s+posts/i.test(action || "");
+    if (!isLiveFeedAction) return;
     scheduleRescan(250);
     setTimeout(() => scan(document), 1100);
   }, true);
