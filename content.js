@@ -376,7 +376,9 @@
       settled = true;
       badge.querySelector("span").textContent = "Read locally (rule-based)";
     };
-    const timeout = setTimeout(fallback, 8000);
+    // An 8B local model can take several seconds just to wake up. Keep the
+    // controls responsive, but give Gemma enough time to complete a real read.
+    const timeout = setTimeout(fallback, 45000);
     chrome.runtime.sendMessage({ type: "classify-post", text }, (result) => {
       clearTimeout(timeout);
       if (settled || !badge.isConnected) return;

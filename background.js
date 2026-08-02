@@ -80,11 +80,13 @@ async function recordAssessmentSafely(key) {
 }
 
 async function classify(text) {
+  // Keep local inference responsive on long social posts.
+  text = text.slice(0, 4500);
   const prompt = `You are a strict filter for a technical LinkedIn reader. Judge value to the reader, never value for engagement, marketing, or content generation.\n\nUseful: concrete and supportable claims; technical detail; examples; measurements; code; primary sources; original analysis; clearly scoped experience.\nSlop: vague promotion, generic motivation, recycled advice, engagement bait, unsupported grand claims, or a long list of buzzwords without evidence.\n\nExample: “Revolutionary AI changes everything. Comment YES.” = slop.\nExample: “Our retrieval evaluation reduced unsupported answers from 18% to 7%; methodology linked.” = useful.\n\nReturn only JSON: {"label":"useful"|"slop"|"uncertain","reason":"under 12 words"}.\n\nPost:\n${text.slice(0, 12000)}`;
   const response = await fetch(OLLAMA_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, prompt, stream: false, format: "json", options: { temperature: 0 } })
+    body: JSON.stringify({ model: MODEL, prompt, stream: false, format: "json", keep_alive: "15m", options: { temperature: 0, num_predict: 80 } })
   });
   if (!response.ok) throw new Error("Gemma 4 is unavailable");
   const payload = await response.json();
