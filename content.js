@@ -275,7 +275,11 @@
     const fingerprint = isXPost
       ? `${xPermalink}|${xText}`
       : text.slice(0, 700);
-    if (post.dataset[PROCESSED] && post.dataset.signalFilterFingerprint === fingerprint) return;
+    const controlsPresent = Boolean(post.querySelector(".signal-filter-badge"));
+    // X routinely redraws the inside of a tweet while retaining the outer
+    // article and its data attributes. When that removes our badge, treat the
+    // card as needing a fresh attachment even if the tweet itself is unchanged.
+    if (post.dataset[PROCESSED] && post.dataset.signalFilterFingerprint === fingerprint && (controlsPresent || post.classList.contains(HIDDEN))) return;
     if (post.dataset[PROCESSED]) {
       post.querySelectorAll(".signal-filter-badge, .signal-filter-notice").forEach((element) => element.remove());
       post.classList.remove(HIDDEN);
@@ -286,7 +290,9 @@
       chrome.storage.local.set({ scannedCount: scannedCount + 1 });
       updateStatus();
     });
-    if (text.length < 80) return;
+    // Tweet detail views, replies, and image-first posts can be brief. They
+    // still need the same feedback and save controls as feed posts.
+    if (text.length < 80 && !isXPost) return;
     const value = score(text);
     const features = featureVector(text);
     const badge = addIndicator(post, value, features);
@@ -392,5 +398,23 @@
   // unchanged cards, while newly rendered tweets get controls immediately.
   if (/(^|\.)x\.com$|(^|\.)twitter\.com$/.test(location.hostname)) {
     setInterval(() => scan(document), 1800);
+    const rescanAfterNavigation = () => {
+      scheduleRescan(0);
+      setTimeout(() => scan(document), 300);
+      setTimeout(() => scan(document), 1100);
+    };
+    const originalPushState = history.pushState;
+    history.pushState = function (...args) {
+      const result = originalPushState.apply(this, args);
+      rescanAfterNavigation();
+      return result;
+    };
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function (...args) {
+      const result = originalReplaceState.apply(this, args);
+      rescanAfterNavigation();
+      return result;
+    };
+    addEventListener("popstate", rescanAfterNavigation);
   }
 })();
