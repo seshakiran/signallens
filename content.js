@@ -11,6 +11,7 @@
   const PROCESSED = "signalFilterProcessed";
   const HIDDEN = "signal-filter-hidden";
   const countedAssessments = new Set();
+  const liveBadges = new WeakSet();
   let enabled = true;
   let sensitivity = 0;
 
@@ -341,6 +342,7 @@
     const badge = document.createElement("div");
     const result = value <= -3 ? "Likely low signal" : "Read locally";
     badge.className = "signal-filter-badge";
+    liveBadges.add(badge);
     const xPost = post.matches("article[data-testid='tweet']");
     if (xPost) badge.classList.add("signal-filter-badge-x");
     badge.innerHTML = `<span>${result}</span><button type="button" data-vote="useful" title="Useful">👍</button><button type="button" data-vote="mixed" title="Mixed">😐</button><button type="button" data-vote="slop" title="Low signal">👎</button>`;
@@ -368,7 +370,17 @@
 
   function askGemma(text, post, badge, value) {
     badge.querySelector("span").textContent = "Reading with Gemma 4…";
+    let settled = false;
+    const fallback = () => {
+      if (settled || !badge.isConnected) return;
+      settled = true;
+      badge.querySelector("span").textContent = "Read locally (rule-based)";
+    };
+    const timeout = setTimeout(fallback, 8000);
     chrome.runtime.sendMessage({ type: "classify-post", text }, (result) => {
+      clearTimeout(timeout);
+      if (settled || !badge.isConnected) return;
+      settled = true;
       if (chrome.runtime.lastError || result?.error) {
         badge.querySelector("span").textContent = "Read locally (rule-based)";
         return;
@@ -398,7 +410,10 @@
     const fingerprint = isXPost
       ? `${xPermalink}|${xText}`
       : text.slice(0, 700);
-    const controlsPresent = Boolean(post.querySelector(".signal-filter-badge"));
+    // Framework re-renders may clone the visible badge but discard its click
+    // listeners. Only a badge created in this content-script context counts
+    // as live; a cloned one is removed and rebuilt with fresh controls.
+    const controlsPresent = Array.from(post.querySelectorAll(".signal-filter-badge")).some((badge) => liveBadges.has(badge));
     // X routinely redraws the inside of a tweet while retaining the outer
     // article and its data attributes. When that removes our badge, treat the
     // card as needing a fresh attachment even if the tweet itself is unchanged.
