@@ -1,0 +1,93 @@
+# SignalLens for LinkedIn & X
+
+> A local-first signal filter for professional and technical social feeds.
+
+SignalLens helps you spend less time on vague AI hype and more time on posts with real substance. It runs in the browser, reads visible posts as you scroll, and lets you teach it what is useful, mixed, or low signal.
+
+## What it does
+
+- Scores visible posts locally as they enter your LinkedIn or X feed.
+- Uses **Gemma 4 through local Ollama** for a second, on-device judgment when it is available.
+- Lets you mark posts as **👍 Useful**, **😐 Mixed**, or **👎 Low signal**.
+- Learns from new labels with a compact three-class preference model stored in Chrome.
+- Hides low-signal and mixed-relevance posts, while keeping every decision reversible.
+- Saves posts into local bookmark folders, with a dedicated bookmarks library.
+- Exports bookmarks as **CSV** for spreadsheets or **JSON** for integrations.
+- Uses an adaptive Material-style interface with automatic and manual light/dark themes.
+
+## Privacy model
+
+SignalLens is local-first by design.
+
+- Post classification rules run inside the extension.
+- Preference-learning features and labels live in Chrome storage on this device.
+- Bookmark data is stored locally until you export it.
+- When enabled, Gemma receives visible post text only through your local Ollama service at `127.0.0.1`.
+- No cloud service, account, or API key is required for the local prototype.
+
+## Install locally
+
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked**.
+4. Choose this repository folder.
+5. Open or refresh LinkedIn or X.
+
+Use the extension icon to open the dashboard. Reload the extension from Chrome’s extension page after pulling updates.
+
+## How SignalLens decides
+
+The local fast path rewards concrete technical signals—measurements, benchmarks, papers, source links, code, model and system details—and discounts generic superlatives, unsupported claims, and engagement bait.
+
+Gemma 4 then provides a structured second opinion:
+
+- **Useful** — new, supported, and practically usable insight.
+- **Mixed** — legitimate content that may not be consistently relevant or useful to you.
+- **Low signal** — vague, promotional, repetitive, or unsupported content.
+
+Your labels are the source of truth. The learner retains only a small numeric feature vector for each new label, then begins adapting borderline decisions after enough examples are collected.
+
+## Bookmarks
+
+Save any post into a local folder from its on-post control. In the **Bookmarks** view you can:
+
+- Create and rename folders.
+- Open saved post links.
+- Export your library as CSV or JSON.
+
+JSON is the preferred handoff format for a future account-backed sync or a direct TweetSmash integration; CSV is ideal for Google Sheets, Excel, and other tabular tools.
+
+## Architecture
+
+```text
+Visible LinkedIn / X post
+          │
+          ├── Local rule score ───────────────┐
+          │                                   │
+          ├── Local Gemma 4 (optional) ───────┼──► Useful / Mixed / Low signal
+          │                                   │
+          └── Your label ─► local preference model
+                                              │
+                                    reversible show / hide decision
+```
+
+## Roadmap
+
+- Account-backed sync for bookmarks and preferences.
+- Optional hosted inference and metered paid plans.
+- Cross-application bookmark library and TweetSmash handoff.
+- Better calibration reports and user-controlled filter strictness.
+
+## Development
+
+This prototype is intentionally dependency-free:
+
+```text
+manifest.json   Chrome extension manifest
+content.js      Feed detection, controls, and local learning
+content.css     Feed overlays and on-post UI
+background.js   Local Gemma bridge and bookmark exports
+popup.*         Extension dashboard and bookmark library
+```
+
+Before publishing changes, reload the unpacked extension and test both a LinkedIn feed and an X timeline.

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><link rel="stylesheet" href="popup.css"></head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="brand-mark">S</div>
+        <div><h1>SignalLens</h1><p>LinkedIn, with a higher signal-to-noise ratio.</p></div>
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch theme" title="Switch theme">☀</button>
+        <span class="local-chip">Local</span>
+      </header>
+      <nav class="view-tabs"><button class="is-active" data-view="dashboard" type="button">Dashboard</button><button data-view="library" type="button">Bookmarks</button></nav>
+      <div id="dashboardView" class="dashboard-grid">
+        <section class="control-card">
+          <label class="switch"><input id="enabled" type="checkbox"><span>Filtering enabled</span></label>
+          <section class="stat metrics">
+            <div class="metric"><strong id="scannedCount">0</strong><span>posts assessed</span></div>
+            <div class="metric"><strong id="filteredCount">0</strong><span>posts filtered</span></div>
+          </section>
+        </section>
+        <section class="learning-card">
+          <h2>Personal learning</h2>
+          <p class="votes"><span id="usefulVotes">0</span> useful · <span id="mixedVotes">0</span> mixed · <span id="slopVotes">0</span> low signal</p>
+          <p class="votes"><span id="preferenceExamples">0</span> trainable examples · adapts after 12</p>
+          <section class="stat learning-stat"><strong id="accuracyPercent">—</strong><span id="accuracyDetail">agreement needs labels</span></section>
+        </section>
+        <section class="rules card">
+          <h2>How it decides</h2>
+          <p><b>Keeps:</b> technical terms, metrics, papers, source links, code, and benchmarks.</p>
+          <p><b>Filters:</b> vague superlatives, unsupported claims, and engagement-bait phrases.</p>
+          <p class="note">Rule-based locally, with Gemma 4 as a private second opinion.</p>
+        </section>
+        <section class="bookmarks card">
+          <h2>Bookmarks <span id="bookmarkCount">0</span></h2>
+          <div class="folder-add"><input id="folderName" placeholder="New folder"><button id="addFolder" type="button">Add</button></div>
+          <div id="folderList" class="folder-list"></div>
+        </section>
+      </div>
+      <section id="bookmarkLibrary" class="bookmark-library" hidden>
+        <div class="library-header"><div><h2>Saved posts</h2><p>Local to this browser until you choose to export.</p></div><div class="export-actions"><button data-export="csv" type="button">CSV</button><button data-export="json" type="button">JSON</button></div></div>
+        <div id="bookmarkItems" class="bookmark-items"></div>
+      </section>
+      <small>Runs locally. No post text is uploaded.</small>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

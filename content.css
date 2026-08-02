@@ -1,0 +1,99 @@
+.signal-filter-hidden { display: none !important; }
+#signal-filter-status {
+  background: #0a66c2;
+  border-radius: 18px;
+  bottom: 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .2);
+  color: white;
+  font: 600 12px/1 system-ui, sans-serif;
+  left: 18px;
+  padding: 10px 13px;
+  position: fixed;
+  z-index: 2147483647;
+}
+#signal-filter-panel {
+  background: #f8faff;
+  border: 1px solid #c5d3e7;
+  border-radius: 22px 12px 22px 12px;
+  box-shadow: 0 12px 40px rgba(29, 52, 84, .24);
+  color: #1d2632;
+  min-height: 220px;
+  min-width: 280px;
+  overflow: auto;
+  position: fixed;
+  resize: both;
+  z-index: 2147483646;
+}
+#signal-filter-panel header { align-items: center; background: #e6effb; cursor: grab; display: flex; gap: 9px; padding: 13px 14px; user-select: none; }
+#signal-filter-panel header:active { cursor: grabbing; }
+.signal-filter-panel-grip { color: #5d7088; letter-spacing: -2px; }
+.signal-filter-panel-local { background: #d7e8ff; border-radius: 999px; color: #084a99; font: 700 11px system-ui, sans-serif; margin-left: auto; padding: 4px 8px; }
+#signal-filter-panel header button { background: transparent; border: 0; color: #334e68; cursor: pointer; font-size: 21px; line-height: 1; }
+#signal-filter-panel section { font: 14px/1.4 system-ui, sans-serif; padding: 16px; }
+.signal-filter-panel-kicker { color: #536476; margin: 0 0 15px; }
+.signal-filter-panel-metrics { display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
+.signal-filter-panel-metrics div { background: #eaf3fb; border-radius: 14px; display: flex; flex-direction: column; padding: 12px; }
+.signal-filter-panel-metrics b { color: #0a66c2; font-size: 26px; }
+.signal-filter-panel-metrics span, .signal-filter-panel-labels, .signal-filter-panel-help { color: #536476; font-size: 12px; }
+.signal-filter-panel-labels { border-top: 1px solid #d7e0eb; margin: 15px 0 0; padding-top: 13px; }
+.signal-filter-panel-help { margin: 11px 0 0; }
+#signal-filter-launcher { background: #0a66c2; border: 0; border-radius: 50%; bottom: 18px; box-shadow: 0 4px 16px rgba(0,0,0,.22); color: white; cursor: pointer; font: 800 18px system-ui, sans-serif; height: 46px; position: fixed; right: 18px; width: 46px; z-index: 2147483647; }
+#signal-filter-panel.is-minimized { display: none; }
+@media (prefers-color-scheme: dark) {
+  #signal-filter-panel { background: #1a1d23; border-color: #3e4755; color: #e3e7ed; }
+  #signal-filter-panel header { background: #242a34; }
+  .signal-filter-panel-local, .signal-filter-panel-metrics div { background: #263b58; color: #b6d3ff; }
+  #signal-filter-panel header button, .signal-filter-panel-kicker, .signal-filter-panel-metrics span, .signal-filter-panel-labels, .signal-filter-panel-help { color: #c2c9d4; }
+  .signal-filter-panel-labels { border-color: #3e4755; }
+}
+#signal-filter-panel.is-dark { background: #1a1d23; border-color: #3e4755; color: #e3e7ed; }
+#signal-filter-panel.is-dark header { background: #242a34; }
+#signal-filter-panel.is-dark .signal-filter-panel-local, #signal-filter-panel.is-dark .signal-filter-panel-metrics div { background: #263b58; color: #b6d3ff; }
+#signal-filter-panel.is-dark header button, #signal-filter-panel.is-dark .signal-filter-panel-kicker, #signal-filter-panel.is-dark .signal-filter-panel-metrics span, #signal-filter-panel.is-dark .signal-filter-panel-labels, #signal-filter-panel.is-dark .signal-filter-panel-help { color: #c2c9d4; }
+#signal-filter-panel.is-dark .signal-filter-panel-labels { border-color: #3e4755; }
+.signal-filter-notice {
+  align-items: center;
+  background: #f3f6f8;
+  border: 1px solid #d0dbe3;
+  border-radius: 8px;
+  color: #38434f;
+  display: flex;
+  font: 14px/1.4 system-ui, sans-serif;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 12px 16px;
+}
+.signal-filter-notice button {
+  background: #0a66c2;
+  border: 0;
+  border-radius: 16px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 6px 12px;
+}
+.signal-filter-badge {
+  align-items: center;
+  background: #eef5fb;
+  border-left: 3px solid #0a66c2;
+  color: #334e68;
+  display: flex;
+  font: 12px/1.2 system-ui, sans-serif;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+}
+.signal-filter-badge span { font-weight: 650; margin-right: auto; }
+.signal-filter-badge button {
+  background: white;
+  border: 1px solid #9db8d0;
+  border-radius: 12px;
+  color: #0a66c2;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+.signal-filter-bookmark-controls { align-items: center; display: inline-flex; gap: 5px; }
+.signal-filter-bookmark-controls select { border: 1px solid #9db8d0; border-radius: 10px; color: #334e68; font-size: 12px; max-width: 110px; padding: 3px; }
+.signal-filter-bookmarked { background: #d7f4e3; border-radius: 999px; color: #0a6036; font: 700 12px/1 system-ui, sans-serif; padding: 6px 9px; }
+@media (prefers-color-scheme: dark) { .signal-filter-bookmarked { background: #144c32; color: #a6f3c7; } }

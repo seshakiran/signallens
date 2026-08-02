@@ -1,0 +1,89 @@
+const enabled = document.querySelector('#enabled');
+const filteredCount = document.querySelector('#filteredCount');
+const scannedCount = document.querySelector('#scannedCount');
+const usefulVotes = document.querySelector('#usefulVotes');
+const slopVotes = document.querySelector('#slopVotes');
+const mixedVotes = document.querySelector('#mixedVotes');
+const preferenceExamples = document.querySelector('#preferenceExamples');
+const accuracyPercent = document.querySelector('#accuracyPercent');
+const accuracyDetail = document.querySelector('#accuracyDetail');
+const bookmarkCount = document.querySelector('#bookmarkCount');
+const folderName = document.querySelector('#folderName');
+const addFolder = document.querySelector('#addFolder');
+const folderList = document.querySelector('#folderList');
+const themeToggle = document.querySelector('#themeToggle');
+const dashboardView = document.querySelector('#dashboardView');
+const bookmarkLibrary = document.querySelector('#bookmarkLibrary');
+const bookmarkItems = document.querySelector('#bookmarkItems');
+function renderAccuracy({ predictions = 0, correct = 0 }) {
+  accuracyPercent.textContent = predictions ? `${Math.round((correct / predictions) * 100)}%` : '—';
+  accuracyDetail.textContent = predictions ? `agreement with your labels · ${correct} of ${predictions}` : 'personal-model agreement needs labels';
+}
+function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
+  bookmarkCount.textContent = bookmarks.length;
+  const counts = Object.fromEntries(bookmarkFolders.map((folder) => [folder, bookmarks.filter((item) => item.folder === folder).length]));
+  folderList.innerHTML = bookmarkFolders.map((folder) => `<button class="folder-chip" data-folder="${escapeHtml(folder)}" title="Rename folder">${escapeHtml(folder)} <b>${counts[folder]}</b></button>`).join('');
+  bookmarkItems.innerHTML = bookmarks.length ? bookmarks.slice().sort((a, b) => b.savedAt - a.savedAt).map((item) => `<article class="bookmark-item"><span>${escapeHtml(item.folder)}</span><a href="${escapeHtml(item.permalink)}" target="_blank">${escapeHtml(item.preview)}</a></article>`).join('') : '<p class="empty-library">No saved posts yet. Use Save on a post to add one.</p>';
+}
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]); }
+function applyTheme(preference) {
+  const actual = preference === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+  document.documentElement.classList.toggle('theme-dark', actual === 'dark');
+  document.documentElement.classList.toggle('theme-light', actual === 'light');
+  themeToggle.textContent = actual === 'dark' ? '☀' : '☾';
+  themeToggle.setAttribute('aria-label', `Switch to ${actual === 'dark' ? 'light' : 'dark'} theme`);
+}
+function renderCount({ filteredCount: count = 0 }) { filteredCount.textContent = count; }
+function renderScanned({ scannedCount: count = 0 }) { scannedCount.textContent = count; }
+chrome.storage.local.get({ enabled: true }, (settings) => { enabled.checked = settings.enabled; });
+chrome.storage.local.get({ filteredCount: 0 }, renderCount);
+chrome.storage.local.get({ scannedCount: 0 }, renderScanned);
+chrome.storage.local.get({ usefulVotes: 0, mixedVotes: 0, slopVotes: 0 }, (votes) => { usefulVotes.textContent = votes.usefulVotes; mixedVotes.textContent = votes.mixedVotes; slopVotes.textContent = votes.slopVotes; });
+chrome.storage.local.get({ preferenceModel: { examples: 0 } }, ({ preferenceModel }) => { preferenceExamples.textContent = preferenceModel.examples; });
+chrome.storage.local.get({ preferenceStats: { predictions: 0, correct: 0 } }, ({ preferenceStats }) => renderAccuracy(preferenceStats));
+chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
+chrome.storage.local.get({ themePreference: 'system' }, ({ themePreference }) => applyTheme(themePreference));
+themeToggle.addEventListener('click', () => chrome.storage.local.set({ themePreference: document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark' }));
+addFolder.addEventListener('click', () => {
+  const folder = folderName.value.trim().slice(0, 40);
+  if (!folder) return;
+  chrome.storage.local.get({ bookmarkFolders: ['Inbox'] }, ({ bookmarkFolders }) => {
+    chrome.storage.local.set({ bookmarkFolders: bookmarkFolders.includes(folder) ? bookmarkFolders : [...bookmarkFolders, folder] });
+    folderName.value = '';
+  });
+});
+folderList.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-folder]');
+  if (!button) return;
+  const previous = button.dataset.folder;
+  const next = prompt('Rename folder', previous)?.trim().slice(0, 40);
+  if (!next || next === previous) return;
+  chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, ({ bookmarks, bookmarkFolders }) => {
+    if (bookmarkFolders.includes(next)) return;
+    chrome.storage.local.set({ bookmarkFolders: bookmarkFolders.map((folder) => folder === previous ? next : folder), bookmarks: bookmarks.map((item) => item.folder === previous ? { ...item, folder: next } : item) });
+  });
+});
+document.querySelector('.view-tabs').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-view]');
+  if (!button) return;
+  const library = button.dataset.view === 'library';
+  dashboardView.hidden = library;
+  bookmarkLibrary.hidden = !library;
+  document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('is-active', item === button));
+});
+document.querySelector('.export-actions').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-export]');
+  if (button) chrome.runtime.sendMessage({ type: 'export-bookmarks', format: button.dataset.export });
+});
+enabled.addEventListener('change', () => chrome.storage.local.set({ enabled: enabled.checked }));
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.filteredCount) renderCount({ filteredCount: changes.filteredCount.newValue });
+  if (changes.scannedCount) renderScanned({ scannedCount: changes.scannedCount.newValue });
+  if (changes.usefulVotes) usefulVotes.textContent = changes.usefulVotes.newValue;
+  if (changes.slopVotes) slopVotes.textContent = changes.slopVotes.newValue;
+  if (changes.mixedVotes) mixedVotes.textContent = changes.mixedVotes.newValue;
+  if (changes.preferenceModel) preferenceExamples.textContent = changes.preferenceModel.newValue.examples;
+  if (changes.preferenceStats) renderAccuracy(changes.preferenceStats.newValue);
+  if (changes.bookmarks || changes.bookmarkFolders) chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
+  if (changes.themePreference) applyTheme(changes.themePreference.newValue);
+});
