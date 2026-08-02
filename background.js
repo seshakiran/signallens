@@ -2,6 +2,7 @@ const OLLAMA_URL = "http://127.0.0.1:11434/api/generate";
 const MODEL = "gemma4:e4b";
 let assessmentQueue = Promise.resolve();
 let bookmarkQueue = Promise.resolve();
+let gemmaQueue = Promise.resolve();
 
 function resetAssessmentSession() {
   return Promise.all([
@@ -33,9 +34,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return;
   }
   if (message.type !== "classify-post") return;
-  classify(message.text).then(sendResponse).catch((error) => sendResponse({ error: error.message }));
+  classifyWithGemma(message.text).then(sendResponse).catch((error) => sendResponse({ error: error.message }));
   return true;
 });
+
+async function classifyWithGemma(text) {
+  const task = gemmaQueue.then(() => classify(text));
+  gemmaQueue = task.catch(() => undefined);
+  try {
+    const result = await task;
+    await chrome.storage.local.set({ gemmaStatus: { state: 'ready', detail: 'Gemma 4 is responding locally', updatedAt: Date.now() } });
+    return result;
+  } catch (error) {
+    await chrome.storage.local.set({ gemmaStatus: { state: 'error', detail: `Gemma 4: ${error.message}`, updatedAt: Date.now() } });
+    throw error;
+  }
+}
 
 async function saveBookmark(bookmark) {
   const task = bookmarkQueue.then(() => saveBookmarkSafely(bookmark));

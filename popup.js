@@ -13,6 +13,7 @@ const learningProgressValue = document.querySelector('#learningProgressValue');
 const learningProgressBar = document.querySelector('#learningProgressBar');
 const learningProgressNote = document.querySelector('#learningProgressNote');
 const learningMix = document.querySelector('#learningMix');
+const gemmaStatus = document.querySelector('#gemmaStatus');
 const bookmarkCount = document.querySelector('#bookmarkCount');
 const folderName = document.querySelector('#folderName');
 const addFolder = document.querySelector('#addFolder');
@@ -54,6 +55,13 @@ function renderLearningProgress(examples = []) {
   learningProgressNote.textContent = phase.note;
   learningMix.innerHTML = `<span>👍 ${mix.useful}</span><span>😐 ${mix.mixed}</span><span>👎 ${mix.slop}</span><em>vectors only · stays on this device</em>`;
 }
+function renderGemmaStatus(status) {
+  const ready = status?.state === 'ready';
+  const failed = status?.state === 'error';
+  gemmaStatus.textContent = status?.detail || 'Gemma 4 status: waiting for a local read';
+  gemmaStatus.classList.toggle('is-ready', ready);
+  gemmaStatus.classList.toggle('is-error', failed);
+}
 function renderBookmarks({ bookmarks = [], bookmarkFolders = ['Inbox'] }) {
   bookmarkCount.textContent = bookmarks.length;
   const counts = Object.fromEntries(bookmarkFolders.map((folder) => [folder, bookmarks.filter((item) => item.folder === folder).length]));
@@ -93,6 +101,7 @@ chrome.storage.local.get({ usefulVotes: 0, mixedVotes: 0, slopVotes: 0 }, (votes
 chrome.storage.local.get({ preferenceModel: { examples: 0 } }, ({ preferenceModel }) => { preferenceExamples.textContent = preferenceModel.examples; });
 chrome.storage.local.get({ preferenceStats: { predictions: 0, correct: 0 } }, ({ preferenceStats }) => renderAccuracy(preferenceStats));
 chrome.storage.local.get({ trainingExamples: [] }, ({ trainingExamples }) => renderLearningProgress(trainingExamples));
+chrome.storage.local.get({ gemmaStatus: null }, ({ gemmaStatus: status }) => renderGemmaStatus(status));
 chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
 chrome.storage.local.get({ themePreference: 'system' }, ({ themePreference }) => applyTheme(themePreference));
 themeToggle.addEventListener('click', () => chrome.storage.local.set({ themePreference: document.documentElement.classList.contains('theme-dark') ? 'light' : 'dark' }));
@@ -154,6 +163,7 @@ chrome.storage.onChanged.addListener((changes) => {
   if (changes.preferenceModel) preferenceExamples.textContent = changes.preferenceModel.newValue.examples;
   if (changes.preferenceStats) renderAccuracy(changes.preferenceStats.newValue);
   if (changes.trainingExamples) renderLearningProgress(changes.trainingExamples.newValue);
+  if (changes.gemmaStatus) renderGemmaStatus(changes.gemmaStatus.newValue);
   if (changes.bookmarks || changes.bookmarkFolders) chrome.storage.local.get({ bookmarks: [], bookmarkFolders: ['Inbox'] }, renderBookmarks);
   if (changes.themePreference) applyTheme(changes.themePreference.newValue);
 });

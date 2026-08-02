@@ -378,13 +378,13 @@
     };
     // An 8B local model can take several seconds just to wake up. Keep the
     // controls responsive, but give Gemma enough time to complete a real read.
-    const timeout = setTimeout(fallback, 45000);
+    const timeout = setTimeout(fallback, 90000);
     chrome.runtime.sendMessage({ type: "classify-post", text }, (result) => {
       clearTimeout(timeout);
       if (settled || !badge.isConnected) return;
       settled = true;
       if (chrome.runtime.lastError || result?.error) {
-        badge.querySelector("span").textContent = "Read locally (rule-based)";
+        badge.querySelector("span").textContent = "Gemma unavailable — rule-based";
         return;
       }
       const labels = { useful: "Gemma: useful", slop: "Gemma: likely low signal", uncertain: "Gemma: uncertain" };
