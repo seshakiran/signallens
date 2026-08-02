@@ -6,14 +6,17 @@ SignalLens helps you spend less time on vague AI hype and more time on posts wit
 
 ## In action
 
-<p align="center">
-  <img src="assets/screenshots/dashboard.png" alt="SignalLens dashboard showing feed assessment, filtering, and local learning" width="360">
-  <img src="assets/screenshots/dark-dashboard.png" alt="SignalLens dashboard in dark theme" width="420">
-</p>
+### Dashboard — local filtering and learning
 
-| Dashboard | Adaptive theme |
-| --- | --- |
-| See assessed and filtered posts, explain the decision signals, and follow local-model agreement. | SignalLens follows your system theme and includes a quick manual light/dark toggle. |
+![SignalLens dashboard showing feed assessment, filtering, and local learning](assets/screenshots/dashboard.png)
+
+See assessed and filtered posts, understand the signal criteria, and track the personal model’s agreement with your labels.
+
+### Adaptive dark theme
+
+![SignalLens dashboard in dark theme](assets/screenshots/dark-dashboard.png)
+
+SignalLens follows your system preference and includes a quick manual light/dark toggle.
 
 ## What it does
 
