@@ -60,6 +60,7 @@ body { font: 14px/1.45 "Google Sans", "Roboto", ui-sans-serif, system-ui, sans-s
 .theme-toggle + .local-chip { margin-left: 0; }
 .drag-hint { color: var(--on-surface-variant); font-size: 11px; font-weight: 700; white-space: nowrap; }
 .dashboard-grid { display: grid; gap: 14px; }
+.view-panel[hidden] { display: none !important; }
 .view-tabs { background: var(--surface-container); border-radius: 999px; display: inline-flex; gap: 2px; margin: 0 0 16px; padding: 3px; }
 .view-tabs button { background: transparent; border: 0; border-radius: 999px; color: var(--on-surface-variant); cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; padding: 7px 12px; }
 .view-tabs button.is-active { background: var(--primary-container); color: var(--on-primary-container); }

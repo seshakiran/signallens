@@ -10,7 +10,7 @@
         <span class="local-chip">Local</span>
       </header>
       <nav class="view-tabs"><button class="is-active" data-view="dashboard" type="button">Dashboard</button><button data-view="library" type="button">Bookmarks</button></nav>
-      <div id="dashboardView" class="dashboard-grid">
+      <div id="dashboardView" class="dashboard-grid view-panel">
         <section class="control-card">
           <label class="switch"><input id="enabled" type="checkbox"><span>Filtering enabled</span></label>
           <section class="stat metrics">
@@ -30,14 +30,10 @@
           <p><b>Filters:</b> vague superlatives, unsupported claims, and engagement-bait phrases.</p>
           <p class="note">Rule-based locally, with Gemma 4 as a private second opinion.</p>
         </section>
-        <section class="bookmarks card">
-          <h2>Bookmarks <span id="bookmarkCount">0</span></h2>
-          <div class="folder-add"><input id="folderName" placeholder="New folder"><button id="addFolder" type="button">Add</button></div>
-          <div id="folderList" class="folder-list"></div>
-        </section>
       </div>
-      <section id="bookmarkLibrary" class="bookmark-library" hidden>
-        <div class="library-header"><div><h2>Saved posts</h2><p>Local to this browser until you choose to export.</p></div><div class="export-actions"><button data-export="csv" type="button">CSV</button><button data-export="json" type="button">JSON</button></div></div>
+      <section id="bookmarkLibrary" class="bookmark-library view-panel" hidden>
+        <div class="library-header"><div><h2>Saved posts <span id="bookmarkCount">0</span></h2><p>Local to this browser until you choose to export.</p></div><div class="export-actions"><button data-export="csv" type="button">CSV</button><button data-export="json" type="button">JSON</button></div></div>
+        <section class="bookmarks"><h2>Folders</h2><div class="folder-add"><input id="folderName" placeholder="New folder"><button id="addFolder" type="button">Add</button></div><div id="folderList" class="folder-list"></div></section>
         <div class="bookmark-tree-actions"><button data-tree-action="expand" type="button">Expand all</button><button data-tree-action="collapse" type="button">Collapse all</button></div>
         <div id="bookmarkItems" class="bookmark-items"></div>
       </section>
