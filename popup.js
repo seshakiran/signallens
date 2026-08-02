@@ -19,6 +19,7 @@ const addFolder = document.querySelector('#addFolder');
 const folderList = document.querySelector('#folderList');
 const themeToggle = document.querySelector('#themeToggle');
 const dashboardView = document.querySelector('#dashboardView');
+const learningView = document.querySelector('#learningView');
 const bookmarkLibrary = document.querySelector('#bookmarkLibrary');
 const bookmarkItems = document.querySelector('#bookmarkItems');
 function renderAccuracy({ version, predictions = 0, correct = 0, byLabel = {} }) {
@@ -117,9 +118,10 @@ folderList.addEventListener('click', (event) => {
 document.querySelector('.view-tabs').addEventListener('click', (event) => {
   const button = event.target.closest('[data-view]');
   if (!button) return;
-  const library = button.dataset.view === 'library';
-  dashboardView.hidden = library;
-  bookmarkLibrary.hidden = !library;
+  const view = button.dataset.view;
+  dashboardView.hidden = view !== 'dashboard';
+  learningView.hidden = view !== 'learning';
+  bookmarkLibrary.hidden = view !== 'library';
   document.querySelectorAll('[data-view]').forEach((item) => item.classList.toggle('is-active', item === button));
 });
 document.querySelector('.export-actions').addEventListener('click', (event) => {
