@@ -17,6 +17,7 @@
   let xEnabled = true;
   let interestTopics = [];
   let sensitivity = 0;
+  let authorPreferences = {};
 
   // X installs delegated tweet handlers above the post itself. Intercept our
   // own actions at the window capture phase, before those handlers receive the
@@ -254,7 +255,7 @@
     const normalized = text.toLowerCase();
     const trustedSource = trustedSourceTerms.some((term) => normalized.includes(term));
     const hasVideo = Boolean(post.querySelector("video, [data-testid='videoPlayer'], [data-testid='videoComponent'], [aria-label*='video' i]"));
-    return trustedSource || hasVideo;
+    return trustedSource || hasVideo || hasPreferredAuthor(post);
   }
 
   function score(text, post) {
@@ -317,8 +318,38 @@
     const feedbackId = post.dataset.signalFilterFeedbackId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     post.dataset.signalFilterFeedbackId = feedbackId;
     post.dataset.signalFilterVote = kind;
+    recordAuthorPreference(kind, post);
     trainPreference(features, kind, feedbackId);
     return true;
+  }
+
+  function authorFor(post) {
+    if (post.matches("article[data-testid='tweet']")) {
+      const href = [...post.querySelectorAll("a[href*='/status/']")].map((link) => link.getAttribute("href") || "").find((value) => /^\/[^/]+\/status\/\d+/.test(value));
+      const match = href?.match(/^\/([^/]+)\/status\/\d+/);
+      return match ? { id: `x:${match[1].toLowerCase()}`, name: `@${match[1]}` } : null;
+    }
+    const profile = [...post.querySelectorAll("a[href*='/in/'], a[href*='/company/']")].find((link) => /\/(in|company)\/[^/?#]+/.test(link.href));
+    const match = profile?.href.match(/\/(in|company)\/([^/?#]+)/);
+    return match ? { id: `linkedin:${match[1]}:${decodeURIComponent(match[2]).toLowerCase()}`, name: (profile.innerText || match[2]).replace(/\s+/g, " ").trim().slice(0, 80) } : null;
+  }
+
+  function recordAuthorPreference(vote, post) {
+    const author = authorFor(post);
+    if (!author) return;
+    chrome.storage.local.get({ authorPreferences: {} }, ({ authorPreferences: stored }) => {
+      const current = stored[author.id] || { name: author.name, useful: 0, mixed: 0, slop: 0 };
+      const next = { ...current, name: author.name || current.name, useful: current.useful + (vote === "useful" ? 1 : 0), mixed: current.mixed + (vote === "mixed" ? 1 : 0), slop: current.slop + (vote === "slop" ? 1 : 0), updatedAt: Date.now() };
+      authorPreferences = { ...stored, [author.id]: next };
+      chrome.storage.local.set({ authorPreferences });
+    });
+  }
+
+  function hasPreferredAuthor(post) {
+    const preference = authorFor(post) && authorPreferences[authorFor(post).id];
+    // One Useful label is enough to retain their next post. Low Signal labels
+    // naturally remove that prior once they catch up.
+    return Boolean(preference && preference.useful > preference.slop);
   }
 
   function saveBookmark(post, folder, controls) {
@@ -654,10 +685,12 @@
     }
   });
   chrome.storage.local.get({ profileSettings: { topics: [] } }, ({ profileSettings }) => { interestTopics = profileSettings.topics || []; });
+  chrome.storage.local.get({ authorPreferences: {} }, (data) => { authorPreferences = data.authorPreferences || {}; });
   chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
   chrome.storage.onChanged.addListener((changes) => {
     if (changes.themePreference) applyDashboardTheme(changes.themePreference.newValue);
     if (changes.profileSettings) interestTopics = changes.profileSettings.newValue.topics || [];
+    if (changes.authorPreferences) authorPreferences = changes.authorPreferences.newValue || {};
     if (changes.usefulVotes || changes.slopVotes) {
       chrome.storage.local.get({ usefulVotes: 0, slopVotes: 0 }, updateSensitivity);
     }
