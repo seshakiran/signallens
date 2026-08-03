@@ -353,36 +353,28 @@
       event.stopPropagation();
       chrome.storage.local.get({ bookmarkFolders: ["Inbox"] }, ({ bookmarkFolders }) => {
         const controls = document.createElement("span");
-        controls.className = "signal-filter-bookmark-controls";
-        const select = document.createElement("select");
-        select.add(new Option("+ Create new folder…", "__new_folder__"));
-        bookmarkFolders.forEach((folder) => select.add(new Option(folder, folder)));
-        select.value = bookmarkFolders[0] || "Inbox";
-        const save = document.createElement("button");
-        save.type = "button";
-        save.textContent = "Save here";
-        ["pointerdown", "mousedown", "touchstart"].forEach((type) => save.addEventListener(type, suppressPostHandling));
+        controls.className = "signal-filter-bookmark-controls signal-filter-bookmark-menu";
+        controls.innerHTML = '<span class="signal-filter-bookmark-menu-label">Save to</span>';
         const createFolder = () => {
           const folder = prompt("New bookmark folder")?.trim().slice(0, 40);
-          if (!folder) {
-            select.value = bookmarkFolders[0] || "Inbox";
-            return false;
-          }
+          if (!folder) return;
           saveBookmark(post, folder, controls);
-          return true;
         };
-        save.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (select.value === "__new_folder__") createFolder();
-          else saveBookmark(post, select.value, controls);
-        });
-        select.addEventListener("change", (event) => {
-          event.stopPropagation();
-          if (select.value !== "__new_folder__") return;
-          createFolder();
-        });
-        controls.append(select, save);
+        const addFolderButton = (label, handler, className = "") => {
+          const option = document.createElement("button");
+          option.type = "button";
+          option.className = className;
+          option.textContent = label;
+          ["pointerdown", "mousedown", "touchstart"].forEach((type) => option.addEventListener(type, suppressPostHandling));
+          option.addEventListener("click", (choiceEvent) => {
+            choiceEvent.preventDefault();
+            choiceEvent.stopPropagation();
+            handler();
+          });
+          controls.append(option);
+        };
+        addFolderButton("+ New folder", createFolder, "signal-filter-new-folder");
+        bookmarkFolders.forEach((folder) => addFolderButton(folder, () => saveBookmark(post, folder, controls)));
         trigger.replaceWith(controls);
       });
     });
@@ -408,7 +400,7 @@
       badge.classList.add("signal-filter-badge-x");
       const shadow = badge.attachShadow({ mode: "open" });
       const style = document.createElement("style");
-      style.textContent = `:host { display:block; margin:8px 0 10px; } .bar { align-items:center; background:#111a27; border:1px solid #294865; border-left:3px solid #2b8ad6; border-radius:12px; color:#d8e8f7; display:flex; font:12px/1.2 system-ui,sans-serif; gap:8px; max-width:100%; padding:7px 9px; } span { font-weight:650; margin-right:auto; } button { background:#172b3e; border:1px solid #3a6689; border-radius:12px; color:#b9dcf8; cursor:pointer; font-size:12px; padding:4px 8px; } button.is-selected { background:#2b8ad6; border-color:#2b8ad6; color:#07131d; } .signal-filter-bookmark-controls { align-items:center; display:inline-flex; gap:5px; } select { appearance:auto; background:#172b3e; border:1px solid #4b7495; border-radius:10px; color:#edf7ff; color-scheme:dark; font-size:12px; font-weight:650; max-width:110px; padding:3px 5px; } option { background:#172b3e; color:#edf7ff; } .signal-filter-bookmarked { background:#144c32; border-radius:999px; color:#a6f3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; } .signal-filter-bookmark-error { background:#5a2328; border-radius:999px; color:#ffc3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; }`;
+      style.textContent = `:host { display:block; margin:8px 0 10px; } .bar { align-items:center; background:#111a27; border:1px solid #294865; border-left:3px solid #2b8ad6; border-radius:12px; color:#d8e8f7; display:flex; font:12px/1.2 system-ui,sans-serif; gap:8px; max-width:100%; padding:7px 9px; } span { font-weight:650; margin-right:auto; } button { background:#172b3e; border:1px solid #3a6689; border-radius:12px; color:#b9dcf8; cursor:pointer; font-size:12px; padding:4px 8px; } button.is-selected { background:#2b8ad6; border-color:#2b8ad6; color:#07131d; } .signal-filter-bookmark-controls { align-items:center; display:inline-flex; gap:5px; } .signal-filter-bookmark-menu { flex-wrap:wrap; } .signal-filter-bookmark-menu-label { font-weight:700; } .signal-filter-bookmark-menu button { font-size:11px; } .signal-filter-new-folder { border-style:dashed; } .signal-filter-bookmarked { background:#144c32; border-radius:999px; color:#a6f3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; } .signal-filter-bookmark-error { background:#5a2328; border-radius:999px; color:#ffc3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; }`;
       surface = document.createElement("div");
       surface.className = "bar";
       shadow.append(style, surface);
