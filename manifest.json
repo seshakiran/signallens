@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SignalLens for LinkedIn & X",
-  "version": "0.8.5",
+  "version": "0.8.6",
   "description": "Locally filters low-substance posts from LinkedIn and X on the web.",
   "permissions": ["storage", "downloads"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],

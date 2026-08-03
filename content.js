@@ -18,6 +18,18 @@
   let interestTopics = [];
   let sensitivity = 0;
 
+  // X installs delegated tweet handlers above the post itself. Intercept our
+  // own actions at the window capture phase, before those handlers receive the
+  // event. Elements carry a closure-backed handler rather than relying on X to
+  // preserve a normal bubbling listener in its virtualized timeline.
+  addEventListener("click", (event) => {
+    const control = event.composedPath().find((candidate) => candidate?.dataset?.signalLensAction === "bookmark");
+    if (!control) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    control.signalLensHandler?.();
+  }, true);
+
   function hashText(value) {
     let hash = 2166136261;
     for (let index = 0; index < value.length; index += 1) {
@@ -346,11 +358,9 @@
     // custom descendants before their click event fires. Stop that sequence at
     // the extension control itself, not just at the final click.
     ["pointerdown", "mousedown", "touchstart"].forEach((type) => trigger.addEventListener(type, suppressPostHandling));
-    trigger.addEventListener("click", (event) => {
+    const openBookmarkMenu = () => {
       // X delegates clicks from the whole post card. Keep this interaction in
       // the extension so it cannot be swallowed by (or trigger) the post UI.
-      event.preventDefault();
-      event.stopPropagation();
       chrome.storage.local.get({ bookmarkFolders: ["Inbox"] }, ({ bookmarkFolders }) => {
         const controls = document.createElement("span");
         controls.className = "signal-filter-bookmark-controls signal-filter-bookmark-menu";
@@ -365,19 +375,18 @@
           option.type = "button";
           option.className = className;
           option.textContent = label;
+          option.dataset.signalLensAction = "bookmark";
+          option.signalLensHandler = handler;
           ["pointerdown", "mousedown", "touchstart"].forEach((type) => option.addEventListener(type, suppressPostHandling));
-          option.addEventListener("click", (choiceEvent) => {
-            choiceEvent.preventDefault();
-            choiceEvent.stopPropagation();
-            handler();
-          });
           controls.append(option);
         };
         addFolderButton("+ New folder", createFolder, "signal-filter-new-folder");
         bookmarkFolders.forEach((folder) => addFolderButton(folder, () => saveBookmark(post, folder, controls)));
         trigger.replaceWith(controls);
       });
-    });
+    };
+    trigger.dataset.signalLensAction = "bookmark";
+    trigger.signalLensHandler = openBookmarkMenu;
     badge.append(trigger);
   }
 
