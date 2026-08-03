@@ -127,6 +127,20 @@
   const signalTerms = ["benchmark", "evaluation", "latency", "inference", "training", "fine-tuning", "retrieval", "RAG", "agent", "token", "context window", "model card", "paper", "dataset", "github", "arxiv", "API", "accuracy", "precision", "recall", "cost"];
   const evidenceTerms = ["http://", "https://", "arxiv.org", "github.com", "doi.org", "documentation", "source:", "paper:", "benchmark:"];
   const hypeTerms = ["game changer", "revolutionary", "mind blowing", "the future is here", "will replace", "10x", "everyone needs", "don't get left behind", "this changes everything", "unlock", "secret", "just launched"];
+  const topicSignals = {
+    "AI agents": ["agent", "agentic", "tool use", "mcp", "orchestration"],
+    "LLMs": ["llm", "language model", "transformer", "prompting"],
+    "Machine learning": ["machine learning", "ml", "neural", "training"],
+    "Evaluation": ["evaluation", "eval", "benchmark", "accuracy", "recall"],
+    "Inference": ["inference", "serving", "latency", "throughput", "quantization"],
+    "Developer tools": ["developer", "sdk", "api", "github", "open source"],
+    "Data engineering": ["data pipeline", "warehouse", "etl", "analytics"],
+    "Cybersecurity": ["security", "vulnerability", "threat", "privacy"],
+    "Product management": ["product", "roadmap", "customer", "discovery"],
+    "Design systems": ["design system", "accessibility", "ux", "ui"],
+    "Startups": ["startup", "founder", "fundraising", "venture"]
+  };
+  const trustedSourceTerms = ["langchain", "vin vashishta", "@vinvashishta"];
 
   // A local-only model. Feature vectors, never post text, are retained for
   // preference learning: [bias, technical depth, evidence, metrics, hype,
@@ -236,15 +250,23 @@
     });
   }
 
-  function score(text) {
+  function hasProtectedSignal(text, post) {
+    const normalized = text.toLowerCase();
+    const trustedSource = trustedSourceTerms.some((term) => normalized.includes(term));
+    const hasVideo = Boolean(post.querySelector("video, [data-testid='videoPlayer'], [data-testid='videoComponent'], [aria-label*='video' i]"));
+    return trustedSource || hasVideo;
+  }
+
+  function score(text, post) {
     const normalized = text.toLowerCase();
     const count = (terms) => terms.reduce((n, term) => n + (normalized.includes(term.toLowerCase()) ? 1 : 0), 0);
     const signal = count(signalTerms);
     const evidence = count(evidenceTerms);
     const hype = count(hypeTerms);
     const hasMetric = /\b\d+(?:\.\d+)?\s?(?:%|ms|seconds|tokens|x)\b/i.test(text);
-    const interest = interestTopics.reduce((total, topic) => total + (normalized.includes(topic.toLowerCase()) ? 1 : 0), 0);
-    return signal * 2 + evidence * 3 + interest * 2 + (hasMetric ? 2 : 0) - hype * 3;
+    const interest = interestTopics.reduce((total, topic) => total + (topicSignals[topic] || [topic.toLowerCase()]).some((term) => normalized.includes(term.toLowerCase()) ? 1 : 0), 0);
+    const protectedSignal = hasProtectedSignal(text, post);
+    return signal * 2 + evidence * 3 + interest * 2 + (hasMetric ? 2 : 0) + (protectedSignal ? 5 : 0) - hype * 3;
   }
 
   function label(post, value, message = "Filtered as low-signal content") {
@@ -254,13 +276,24 @@
       post.classList.add(HIDDEN);
       return;
     }
+    const cleanPost = post.cloneNode(true);
+    cleanPost.querySelectorAll(".signal-filter-badge, .signal-filter-notice, .signal-filter-bookmark-controls").forEach((element) => element.remove());
+    const preview = (cleanPost.innerText || cleanPost.textContent || "").replace(/\s+/g, " ").trim().slice(0, 320);
     const notice = document.createElement("div");
     notice.className = "signal-filter-notice";
-    notice.innerHTML = `<span>${message}</span><button type="button">Show post</button>`;
-    notice.querySelector("button").addEventListener("click", () => {
+    const title = document.createElement("span");
+    title.textContent = message;
+    const peek = document.createElement("p");
+    peek.className = "signal-filter-peek";
+    peek.textContent = preview ? `Peek: ${preview}${preview.length === 320 ? "…" : ""}` : "Peek unavailable for this post.";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.textContent = "Show post";
+    notice.append(title, peek, toggle);
+    toggle.addEventListener("click", () => {
       const isHidden = post.classList.contains(HIDDEN);
       post.classList.toggle(HIDDEN, !isHidden);
-      notice.querySelector("button").textContent = isHidden ? "Hide again" : "Show post";
+      toggle.textContent = isHidden ? "Hide again" : "Show post";
     });
     post.before(notice);
     post.classList.add(HIDDEN);
@@ -364,24 +397,26 @@
       chrome.storage.local.get({ bookmarkFolders: ["Inbox"] }, ({ bookmarkFolders }) => {
         const controls = document.createElement("span");
         controls.className = "signal-filter-bookmark-controls signal-filter-bookmark-menu";
-        controls.innerHTML = '<span class="signal-filter-bookmark-menu-label">Save to</span>';
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", "Bookmark folder");
+        select.add(new Option("+ New folder…", "__new_folder__"));
+        bookmarkFolders.forEach((folder) => select.add(new Option(folder, folder)));
+        select.value = bookmarkFolders[0] || "Inbox";
+        const save = document.createElement("button");
+        save.type = "button";
+        save.textContent = "Save here";
         const createFolder = () => {
           const folder = prompt("New bookmark folder")?.trim().slice(0, 40);
           if (!folder) return;
           saveBookmark(post, folder, controls);
         };
-        const addFolderButton = (label, handler, className = "") => {
-          const option = document.createElement("button");
-          option.type = "button";
-          option.className = className;
-          option.textContent = label;
-          option.dataset.signalLensAction = "bookmark";
-          option.signalLensHandler = handler;
-          ["pointerdown", "mousedown", "touchstart"].forEach((type) => option.addEventListener(type, suppressPostHandling));
-          controls.append(option);
-        };
-        addFolderButton("+ New folder", createFolder, "signal-filter-new-folder");
-        bookmarkFolders.forEach((folder) => addFolderButton(folder, () => saveBookmark(post, folder, controls)));
+        ["pointerdown", "mousedown", "touchstart"].forEach((type) => save.addEventListener(type, suppressPostHandling));
+        save.dataset.signalLensAction = "bookmark";
+        save.signalLensHandler = () => select.value === "__new_folder__" ? createFolder() : saveBookmark(post, select.value, controls);
+        select.addEventListener("change", () => {
+          if (select.value === "__new_folder__") createFolder();
+        });
+        controls.append(select, save);
         trigger.replaceWith(controls);
       });
     };
@@ -409,7 +444,7 @@
       badge.classList.add("signal-filter-badge-x");
       const shadow = badge.attachShadow({ mode: "open" });
       const style = document.createElement("style");
-      style.textContent = `:host { display:block; margin:8px 0 10px; } .bar { align-items:center; background:#111a27; border:1px solid #294865; border-left:3px solid #2b8ad6; border-radius:12px; color:#d8e8f7; display:flex; font:12px/1.2 system-ui,sans-serif; gap:8px; max-width:100%; padding:7px 9px; } span { font-weight:650; margin-right:auto; } button { background:#172b3e; border:1px solid #3a6689; border-radius:12px; color:#b9dcf8; cursor:pointer; font-size:12px; padding:4px 8px; } button.is-selected { background:#2b8ad6; border-color:#2b8ad6; color:#07131d; } .signal-filter-bookmark-controls { align-items:center; display:inline-flex; gap:5px; } .signal-filter-bookmark-menu { flex-wrap:wrap; } .signal-filter-bookmark-menu-label { font-weight:700; } .signal-filter-bookmark-menu button { font-size:11px; } .signal-filter-new-folder { border-style:dashed; } .signal-filter-bookmarked { background:#144c32; border-radius:999px; color:#a6f3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; } .signal-filter-bookmark-error { background:#5a2328; border-radius:999px; color:#ffc3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; }`;
+      style.textContent = `:host { display:block; margin:8px 0 10px; } .bar { align-items:center; background:#111a27; border:1px solid #294865; border-left:3px solid #2b8ad6; border-radius:12px; color:#d8e8f7; display:flex; font:12px/1.2 system-ui,sans-serif; gap:8px; max-width:100%; padding:7px 9px; } span { font-weight:650; margin-right:auto; } button { background:#172b3e; border:1px solid #3a6689; border-radius:12px; color:#b9dcf8; cursor:pointer; font-size:12px; padding:4px 8px; } button.is-selected { background:#2b8ad6; border-color:#2b8ad6; color:#07131d; } .signal-filter-bookmark-controls { align-items:center; display:inline-flex; gap:5px; } .signal-filter-bookmark-menu select { appearance:auto; background:#172b3e; border:1px solid #4b7495; border-radius:10px; color:#edf7ff; color-scheme:dark; font-size:12px; font-weight:650; max-width:120px; padding:3px 5px; } .signal-filter-bookmark-menu option { background:#172b3e; color:#edf7ff; } .signal-filter-bookmarked { background:#144c32; border-radius:999px; color:#a6f3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; } .signal-filter-bookmark-error { background:#5a2328; border-radius:999px; color:#ffc3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; }`;
       surface = document.createElement("div");
       surface.className = "bar";
       shadow.append(style, surface);
@@ -442,7 +477,7 @@
     return badge;
   }
 
-  function askGemma(text, post, badge, value) {
+  function askGemma(text, post, badge, value, protectedSignal) {
     const surface = badge.signalLensSurface || badge;
     surface.querySelector("span").textContent = "Reading with AI…";
     let settled = false;
@@ -465,7 +500,7 @@
       }
       const labels = { useful: "AI: useful", slop: "AI: likely low signal", uncertain: "AI: uncertain" };
       surface.querySelector("span").textContent = `${labels[result.label]} — ${result.reason}`;
-      if (result.label === "slop" && !post.classList.contains(HIDDEN)) label(post, value);
+      if (result.label === "slop" && !protectedSignal && !post.classList.contains(HIDDEN)) label(post, value);
     });
   }
 
@@ -506,17 +541,18 @@
     // Tweet detail views, replies, and image-first posts can be brief. They
     // still need the same feedback and save controls as feed posts.
     if (text.length < 80 && !isXPost) return;
-    const value = score(text);
+    const protectedSignal = hasProtectedSignal(text, post);
+    const value = score(text, post);
     const features = featureVector(text);
     const badge = addIndicator(post, value, features);
-    askGemma(text, post, badge, value);
+    askGemma(text, post, badge, value, protectedSignal);
     chrome.storage.local.get({ preferenceModel: DEFAULT_PREFERENCE_MODEL }, ({ preferenceModel }) => {
       if (preferenceModel.examples < 12 || post.classList.contains(HIDDEN)) return;
       const probabilities = preferenceProbabilities(features, preferenceModel);
-      if (probabilities.slop > 0.65 && probabilities.slop > probabilities.useful && probabilities.slop > probabilities.mixed) label(post, value);
+      if (!protectedSignal && probabilities.slop > 0.65 && probabilities.slop > probabilities.useful && probabilities.slop > probabilities.mixed) label(post, value);
     });
     // Conservative threshold: hide obvious hype, retain uncertain posts.
-    if (value <= -3 + sensitivity) label(post, value);
+    if (!protectedSignal && value <= -3 + sensitivity) label(post, value);
   }
 
   function scan(root = document) {

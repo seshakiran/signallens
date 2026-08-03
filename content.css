@@ -58,11 +58,14 @@
   border-radius: 8px;
   color: #38434f;
   display: flex;
+  flex-wrap: wrap;
   font: 14px/1.4 system-ui, sans-serif;
   gap: 12px;
   margin: 8px 0;
   padding: 12px 16px;
 }
+.signal-filter-notice > span { font-weight: 700; }
+.signal-filter-peek { color: #536476; flex-basis: 100%; font-size: 12px; line-height: 1.4; margin: 0; }
 .signal-filter-notice button {
   background: #0a66c2;
   border: 0;
