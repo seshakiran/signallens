@@ -311,10 +311,27 @@
       ? ["[data-testid='tweetText']"]
       : [".feed-shared-update-v2__description-wrapper", ".update-components-text", "[data-test-id='main-feed-activity-card__commentary']", ".feed-shared-text", ".break-words"];
     const body = selectors.map((selector) => post.querySelector(selector)).find(Boolean);
-    if (body) return (body.innerText || body.textContent || "").replace(/\s+/g, " ").trim();
+    if (body) return cleanPostCopy(body.innerText || body.textContent || "", isXPost);
     const cleanPost = post.cloneNode(true);
     cleanPost.querySelectorAll(".signal-filter-badge, .signal-filter-notice, .signal-filter-bookmark-controls, button, nav, [aria-label*='reaction' i], [aria-label*='follow' i]").forEach((element) => element.remove());
-    return (cleanPost.innerText || cleanPost.textContent || "").replace(/\s+/g, " ").trim();
+    return cleanPostCopy(cleanPost.innerText || cleanPost.textContent || "", isXPost);
+  }
+
+  function cleanPostCopy(rawText, isXPost) {
+    if (isXPost) return rawText.replace(/\s+/g, " ").trim();
+    let lines = rawText.split(/\n+/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
+    // LinkedIn puts the sponsored/header metadata before the copy. Start at
+    // the first actual sentence following its explicit promotion marker.
+    const promotedAt = lines.findIndex((line) => /^promoted$/i.test(line));
+    if (promotedAt >= 0) lines = lines.slice(promotedAt + 1);
+    else {
+      lines = lines.filter((line) => !/^(feed post|follow|like|comment|repost|send|share)$/i.test(line) && !/^[\d,.]+\s+followers?$/i.test(line));
+    }
+    // For sponsored cards the CTA, domain, and engagement UI follow the copy.
+    const actionAt = lines.findIndex((line) => /^(start learning|sign up|learn more|apply now|visit site|watch now)$/i.test(line) || /\.(com|org|io|ai|net)(\/|$)/i.test(line));
+    if (actionAt > 0) lines = lines.slice(0, actionAt);
+    lines = lines.filter((line, index) => index === 0 || line !== lines[index - 1]);
+    return lines.join(" ").trim();
   }
 
   function recordFeedback(kind, features, post) {
