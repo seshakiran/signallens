@@ -277,16 +277,14 @@
       post.classList.add(HIDDEN);
       return;
     }
-    const cleanPost = post.cloneNode(true);
-    cleanPost.querySelectorAll(".signal-filter-badge, .signal-filter-notice, .signal-filter-bookmark-controls").forEach((element) => element.remove());
-    const preview = (cleanPost.innerText || cleanPost.textContent || "").replace(/\s+/g, " ").trim().slice(0, 320);
+    const preview = postBodyText(post).slice(0, 420);
     const notice = document.createElement("div");
     notice.className = "signal-filter-notice";
     const title = document.createElement("span");
     title.textContent = message;
     const peek = document.createElement("p");
     peek.className = "signal-filter-peek";
-    peek.textContent = preview ? `Peek: ${preview}${preview.length === 320 ? "…" : ""}` : "Peek unavailable for this post.";
+    peek.textContent = preview ? `Peek: ${preview}${preview.length === 420 ? "…" : ""}` : "Post text unavailable for this item.";
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.textContent = "Show post";
@@ -303,6 +301,20 @@
       chrome.storage.local.set({ filteredCount: filteredCount + 1 });
       updateStatus();
     });
+  }
+
+  function postBodyText(post) {
+    const isXPost = post.matches("article[data-testid='tweet']");
+    // These are the platforms' content containers—not the surrounding card,
+    // which contains author, follows, reaction, and navigation UI.
+    const selectors = isXPost
+      ? ["[data-testid='tweetText']"]
+      : [".feed-shared-update-v2__description-wrapper", ".update-components-text", "[data-test-id='main-feed-activity-card__commentary']", ".feed-shared-text", ".break-words"];
+    const body = selectors.map((selector) => post.querySelector(selector)).find(Boolean);
+    if (body) return (body.innerText || body.textContent || "").replace(/\s+/g, " ").trim();
+    const cleanPost = post.cloneNode(true);
+    cleanPost.querySelectorAll(".signal-filter-badge, .signal-filter-notice, .signal-filter-bookmark-controls, button, nav, [aria-label*='reaction' i], [aria-label*='follow' i]").forEach((element) => element.remove());
+    return (cleanPost.innerText || cleanPost.textContent || "").replace(/\s+/g, " ").trim();
   }
 
   function recordFeedback(kind, features, post) {
