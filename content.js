@@ -400,14 +400,31 @@
     badge.className = "signal-filter-badge";
     liveBadges.add(badge);
     const xPost = post.matches("article[data-testid='tweet']");
-    if (xPost) badge.classList.add("signal-filter-badge-x");
-    badge.innerHTML = `<span>${result}</span><button type="button" data-vote="useful" title="Useful">👍</button><button type="button" data-vote="mixed" title="Mixed">😐</button><button type="button" data-vote="slop" title="Low signal">👎</button>`;
-    badge.querySelectorAll("button").forEach((button) => {
+    let surface = badge;
+    if (xPost) {
+      // X delegates post clicks very aggressively. A shadow boundary keeps a
+      // folder dropdown or Save click from being reinterpreted as opening the
+      // tweet, while leaving the card itself fully usable.
+      badge.classList.add("signal-filter-badge-x");
+      const shadow = badge.attachShadow({ mode: "open" });
+      const style = document.createElement("style");
+      style.textContent = `:host { display:block; margin:8px 0 10px; } .bar { align-items:center; background:#111a27; border:1px solid #294865; border-left:3px solid #2b8ad6; border-radius:12px; color:#d8e8f7; display:flex; font:12px/1.2 system-ui,sans-serif; gap:8px; max-width:100%; padding:7px 9px; } span { font-weight:650; margin-right:auto; } button { background:#172b3e; border:1px solid #3a6689; border-radius:12px; color:#b9dcf8; cursor:pointer; font-size:12px; padding:4px 8px; } button.is-selected { background:#2b8ad6; border-color:#2b8ad6; color:#07131d; } .signal-filter-bookmark-controls { align-items:center; display:inline-flex; gap:5px; } select { appearance:auto; background:#172b3e; border:1px solid #4b7495; border-radius:10px; color:#edf7ff; color-scheme:dark; font-size:12px; font-weight:650; max-width:110px; padding:3px 5px; } option { background:#172b3e; color:#edf7ff; } .signal-filter-bookmarked { background:#144c32; border-radius:999px; color:#a6f3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; } .signal-filter-bookmark-error { background:#5a2328; border-radius:999px; color:#ffc3c7; font:700 12px/1 system-ui,sans-serif; padding:6px 9px; }`;
+      surface = document.createElement("div");
+      surface.className = "bar";
+      shadow.append(style, surface);
+      // Let controls receive their normal default behavior (including the
+      // native folder select) while preventing the event from escaping into
+      // X's tweet-level click handler.
+      ["pointerdown", "mousedown", "touchstart", "click"].forEach((type) => surface.addEventListener(type, (event) => event.stopPropagation()));
+    }
+    surface.innerHTML = `<span>${result}</span><button type="button" data-vote="useful" title="Useful">👍</button><button type="button" data-vote="mixed" title="Mixed">😐</button><button type="button" data-vote="slop" title="Low signal">👎</button>`;
+    badge.signalLensSurface = surface;
+    surface.querySelectorAll("button").forEach((button) => {
       button.addEventListener("click", () => {
         const vote = button.dataset.vote;
         if (!recordFeedback(vote, features, post)) return;
-        badge.querySelector("span").textContent = vote === "useful" ? "Marked useful" : vote === "mixed" ? "Marked mixed" : "Marked low signal";
-        badge.querySelectorAll("button[data-vote]").forEach((item) => item.classList.toggle("is-selected", item.dataset.vote === vote));
+        surface.querySelector("span").textContent = vote === "useful" ? "Marked useful" : vote === "mixed" ? "Marked mixed" : "Marked low signal";
+        surface.querySelectorAll("button[data-vote]").forEach((item) => item.classList.toggle("is-selected", item.dataset.vote === vote));
         if (vote === "useful") {
           post.classList.remove(HIDDEN);
           if (post.previousElementSibling?.matches(".signal-filter-notice")) post.previousElementSibling.remove();
@@ -420,17 +437,18 @@
     // area so the extension never becomes a new layout column.
     const host = xPost ? post.querySelector("[data-testid='tweetText']")?.parentElement : post;
     (host || post).prepend(badge);
-    addBookmarkControl(post, badge);
+    addBookmarkControl(post, surface);
     return badge;
   }
 
   function askGemma(text, post, badge, value) {
-    badge.querySelector("span").textContent = "Reading with AI…";
+    const surface = badge.signalLensSurface || badge;
+    surface.querySelector("span").textContent = "Reading with AI…";
     let settled = false;
     const fallback = () => {
       if (settled || !badge.isConnected) return;
       settled = true;
-      badge.querySelector("span").textContent = "Read locally (rule-based)";
+      surface.querySelector("span").textContent = "Read locally (rule-based)";
     };
     // An 8B local model can take several seconds just to wake up. Keep the
     // controls responsive, but give Gemma enough time to complete a real read.
@@ -441,11 +459,11 @@
       settled = true;
       if (chrome.runtime.lastError || result?.error) {
         const detail = result?.error || chrome.runtime.lastError?.message || "connection failed";
-        badge.querySelector("span").textContent = `AI unavailable: ${detail.slice(0, 56)}`;
+        surface.querySelector("span").textContent = `AI unavailable: ${detail.slice(0, 56)}`;
         return;
       }
       const labels = { useful: "AI: useful", slop: "AI: likely low signal", uncertain: "AI: uncertain" };
-      badge.querySelector("span").textContent = `${labels[result.label]} — ${result.reason}`;
+      surface.querySelector("span").textContent = `${labels[result.label]} — ${result.reason}`;
       if (result.label === "slop" && !post.classList.contains(HIDDEN)) label(post, value);
     });
   }
