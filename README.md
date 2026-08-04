@@ -6,17 +6,15 @@ SignalLens helps you spend less time on vague AI hype and more time on posts wit
 
 ## In action
 
-### Dashboard — local filtering and learning
+SignalLens has a responsive, light/dark dashboard, live on-post controls, a private learning view, bookmarks, settings for local and hosted AI providers, and a first-run persona/topic setup. It works on the LinkedIn feed and X Home timeline.
 
-![SignalLens dashboard showing feed assessment, filtering, and local learning](assets/screenshots/dashboard.png)
+## Latest changes
 
-See assessed and filtered posts, understand the signal criteria, and track the personal model’s agreement with your labels.
-
-### Adaptive dark theme
-
-![SignalLens dashboard in dark theme](assets/screenshots/dark-dashboard.png)
-
-SignalLens follows your system preference and includes a quick manual light/dark toggle.
+- **Author learning:** a Useful label gives that author’s later posts a local keep-visible prior; Low Signal feedback can reduce it.
+- **More conservative filtering:** posts with video, LangChain, and trusted sources are not auto-hidden.
+- **Readable filtered previews:** notices show the post copy itself, excluding LinkedIn author, follower, promotional, CTA, and reaction metadata.
+- **Local interests that actually count:** persona and selected topics map to related technical vocabulary during scoring.
+- **Resilient X controls:** X-only feed controls, saves, and independent site toggles account for its virtualized navigation.
 
 ## What it does
 
