@@ -8,6 +8,26 @@ SignalLens helps you spend less time on vague AI hype and more time on posts wit
 
 SignalLens has a responsive, light/dark dashboard, live on-post controls, a private learning view, bookmarks, settings for local and hosted AI providers, and a first-run persona/topic setup. It works on the LinkedIn feed and X Home timeline.
 
+### Dashboard
+
+![SignalLens dashboard](assets/screenshots/dashboard.png)
+
+### Personal learning
+
+![SignalLens personal learning](assets/screenshots/learning.png)
+
+### Bookmarks
+
+![SignalLens bookmarks](assets/screenshots/bookmarks.png)
+
+### AI provider settings
+
+![SignalLens AI provider settings](assets/screenshots/settings.png)
+
+### Features
+
+![SignalLens features](assets/screenshots/features.png)
+
 ## Latest changes
 
 - **Author learning:** a Useful label gives that author’s later posts a local keep-visible prior; Low Signal feedback can reduce it.
