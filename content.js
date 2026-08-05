@@ -334,6 +334,49 @@
     return lines.join(" ").trim();
   }
 
+  function reviewRecordFor(post) {
+    const isXPost = post.matches("article[data-testid='tweet']");
+    const text = postBodyText(post);
+    if (!text || text.length < 24) return null;
+    const author = authorFor(post);
+    const link = isXPost
+      ? [...post.querySelectorAll("a[href*='/status/']")].find((item) => /\/[^/]+\/status\/\d+/.test(item.getAttribute("href") || ""))
+      : [...post.querySelectorAll("a[href*='/feed/update/'], a[href*='/posts/']")].find((item) => item.href);
+    const sourceId = link?.href || `${isXPost ? "x" : "linkedin"}:${hashText(text)}`;
+    return {
+      source: isXPost ? "x" : "linkedin",
+      source_id: sourceId,
+      author: author?.name || "Unknown author",
+      author_id: author?.id || "",
+      url: link?.href || "",
+      text,
+      collected_at: new Date().toISOString()
+    };
+  }
+
+  async function sendVisibleFeedToReview() {
+    if (!canScanCurrentPage()) throw new Error("Open an enabled LinkedIn feed or X Home timeline first.");
+    const isXPost = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
+    const selector = isXPost
+      ? "article[data-testid='tweet']"
+      : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update']";
+    const seen = new Set();
+    const posts = [...document.querySelectorAll(selector)].map(reviewRecordFor).filter((record) => {
+      if (!record || seen.has(record.source_id)) return false;
+      seen.add(record.source_id);
+      return true;
+    }).slice(0, 50);
+    if (!posts.length) throw new Error("No readable posts are loaded yet.");
+    const response = await fetch("http://127.0.0.1:5050/api/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ posts })
+    });
+    if (!response.ok) throw new Error("Local Review app is not running on port 5050.");
+    const result = await response.json();
+    return { count: result.imported || posts.length };
+  }
+
   function recordFeedback(kind, features, post) {
     const previous = post.dataset.signalFilterVote;
     if (previous === kind) return false;
@@ -735,6 +778,13 @@
       scan();
     }
     updateStatus();
+  });
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== "send-to-review") return;
+    sendVisibleFeedToReview()
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ error: error.message || "Could not send posts to local Review." }));
+    return true;
   });
   new MutationObserver((changes) => {
     for (const change of changes) {

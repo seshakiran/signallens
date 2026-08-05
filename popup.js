@@ -28,6 +28,8 @@ const learningView = document.querySelector('#learningView');
 const settingsView = document.querySelector('#settingsView');
 const bookmarkLibrary = document.querySelector('#bookmarkLibrary');
 const bookmarkItems = document.querySelector('#bookmarkItems');
+const sendToReview = document.querySelector('#sendToReview');
+const reviewStatus = document.querySelector('#reviewStatus');
 function renderAccuracy({ version, predictions = 0, correct = 0, byLabel = {} }) {
   if (version !== 2) {
     accuracyPercent.textContent = '—';
@@ -195,6 +197,13 @@ bookmarkItems.addEventListener('click', (event) => {
   toggle.setAttribute('aria-expanded', String(!collapsed));
 });
 enabled.addEventListener('change', () => chrome.storage.local.set({ enabled: enabled.checked }));
+sendToReview.addEventListener('click', async () => {
+  reviewStatus.textContent = 'Collecting visible feed…';
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  chrome.tabs.sendMessage(tab.id, { type: 'send-to-review' }, (result) => {
+    reviewStatus.textContent = chrome.runtime.lastError?.message || result?.error || `Sent ${result?.count || 0} posts to local Review.`;
+  });
+});
 linkedInEnabled.addEventListener('change', () => chrome.storage.local.set({ linkedInEnabled: linkedInEnabled.checked }));
 xEnabled.addEventListener('change', () => chrome.storage.local.set({ xEnabled: xEnabled.checked }));
 chrome.storage.onChanged.addListener((changes) => {
