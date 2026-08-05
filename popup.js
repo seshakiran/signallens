@@ -31,6 +31,7 @@ const bookmarkItems = document.querySelector('#bookmarkItems');
 const sendToReview = document.querySelector('#sendToReview');
 const reviewStatus = document.querySelector('#reviewStatus');
 const autoReviewEnabled = document.querySelector('#autoReviewEnabled');
+const readerKeepFeedVisible = document.querySelector('#readerKeepFeedVisible');
 const reviewLimit = document.querySelector('#reviewLimit');
 function renderAccuracy({ version, predictions = 0, correct = 0, byLabel = {} }) {
   if (version !== 2) {
@@ -116,7 +117,7 @@ function renderCount({ filteredCount: count = 0 }) { filteredCount.textContent =
 function renderScanned({ scannedCount: count = 0 }) { scannedCount.textContent = count; }
 chrome.storage.local.get({ enabled: true }, (settings) => { enabled.checked = settings.enabled; });
 chrome.storage.local.get({ linkedInEnabled: true, xEnabled: true }, (settings) => { linkedInEnabled.checked = settings.linkedInEnabled; xEnabled.checked = settings.xEnabled; });
-chrome.storage.local.get({ autoReviewEnabled: true, reviewLimit: 50 }, (settings) => { autoReviewEnabled.checked = settings.autoReviewEnabled; reviewLimit.value = String(settings.reviewLimit); });
+chrome.storage.local.get({ autoReviewEnabled: true, readerKeepFeedVisible: true, reviewLimit: 50 }, (settings) => { autoReviewEnabled.checked = settings.autoReviewEnabled; readerKeepFeedVisible.checked = settings.readerKeepFeedVisible; reviewLimit.value = String(settings.reviewLimit); });
 chrome.storage.local.get({ filteredCount: 0 }, renderCount);
 chrome.storage.local.get({ scannedCount: 0 }, renderScanned);
 chrome.storage.local.get({ usefulVotes: 0, mixedVotes: 0, slopVotes: 0 }, (votes) => { usefulVotes.textContent = votes.usefulVotes; mixedVotes.textContent = votes.mixedVotes; slopVotes.textContent = votes.slopVotes; });
@@ -208,6 +209,7 @@ sendToReview.addEventListener('click', async () => {
   });
 });
 autoReviewEnabled.addEventListener('change', () => chrome.storage.local.set({ autoReviewEnabled: autoReviewEnabled.checked }));
+readerKeepFeedVisible.addEventListener('change', () => chrome.storage.local.set({ readerKeepFeedVisible: readerKeepFeedVisible.checked }));
 reviewLimit.addEventListener('change', () => chrome.storage.local.set({ reviewLimit: Number(reviewLimit.value) }));
 linkedInEnabled.addEventListener('change', () => chrome.storage.local.set({ linkedInEnabled: linkedInEnabled.checked }));
 xEnabled.addEventListener('change', () => chrome.storage.local.set({ xEnabled: xEnabled.checked }));

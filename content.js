@@ -22,6 +22,8 @@
   let lastReviewSignature = "";
   let reviewCollectionRunning = false;
   let lastReviewCollectionAt = 0;
+  let autoReviewEnabled = true;
+  let readerKeepFeedVisible = true;
 
   // X installs delegated tweet handlers above the post itself. Intercept our
   // own actions at the window capture phase, before those handlers receive the
@@ -367,7 +369,17 @@
 
   function collectRenderedReviewPosts(limit = 50) {
     const seen = new Set();
-    return [...document.querySelectorAll(reviewPostSelector())].map(reviewRecordFor).filter((record) => {
+    const cards = [...document.querySelectorAll(reviewPostSelector())];
+    if (!(location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com"))) {
+      document.querySelectorAll("h1, h2, h3, h4, h5, h6, [role='heading']").forEach((heading) => {
+        const marker = `${heading.textContent || ""} ${heading.getAttribute("aria-label") || ""}`.trim().toLowerCase();
+        if (!marker.includes("feed post")) return;
+        let card = heading.closest("article, [data-urn], [data-activity-urn], [data-view-name='feed-full-update']");
+        if (!card) card = heading.parentElement;
+        if (card) cards.push(card);
+      });
+    }
+    return cards.map(reviewRecordFor).filter((record) => {
       if (!record || seen.has(record.source_id)) return false;
       seen.add(record.source_id);
       return true;
@@ -398,7 +410,7 @@
   }
 
   async function collectFeedForReview() {
-    if (reviewCollectionRunning || !canScanCurrentPage()) return { count: 0 };
+    if (reviewCollectionRunning || !canReadCurrentPage()) return { count: 0 };
     const { autoReviewEnabled = true, reviewLimit = 50 } = await chrome.storage.local.get({ autoReviewEnabled: true, reviewLimit: 50 });
     if (!autoReviewEnabled) return { count: 0 };
     reviewCollectionRunning = true;
@@ -438,7 +450,7 @@
   }
 
   function scheduleAutomaticReviewSync() {
-    if (reviewSyncTimer || reviewCollectionRunning || !canScanCurrentPage() || Date.now() - lastReviewCollectionAt < 300000) return;
+    if (reviewSyncTimer || reviewCollectionRunning || !canReadCurrentPage() || Date.now() - lastReviewCollectionAt < 300000) return;
     reviewSyncTimer = setTimeout(async () => {
       reviewSyncTimer = undefined;
       try {
@@ -678,7 +690,7 @@
       }
       const labels = { useful: "AI: useful", slop: "AI: likely low signal", uncertain: "AI: uncertain" };
       surface.querySelector("span").textContent = `${labels[result.label]} — ${result.reason}`;
-      if (result.label === "slop" && !protectedSignal && !post.classList.contains(HIDDEN)) label(post, value);
+      if (result.label === "slop" && shouldAutoHideFromFeed() && !protectedSignal && !post.classList.contains(HIDDEN)) label(post, value);
     });
   }
 
@@ -727,14 +739,14 @@
     chrome.storage.local.get({ preferenceModel: DEFAULT_PREFERENCE_MODEL }, ({ preferenceModel }) => {
       if (preferenceModel.examples < 12 || post.classList.contains(HIDDEN)) return;
       const probabilities = preferenceProbabilities(features, preferenceModel);
-      if (!protectedSignal && probabilities.slop > 0.65 && probabilities.slop > probabilities.useful && probabilities.slop > probabilities.mixed) label(post, value);
+      if (shouldAutoHideFromFeed() && !protectedSignal && probabilities.slop > 0.65 && probabilities.slop > probabilities.useful && probabilities.slop > probabilities.mixed) label(post, value);
     });
     // Conservative threshold: hide obvious hype, retain uncertain posts.
-    if (!protectedSignal && value <= -3 + sensitivity) label(post, value);
+    if (shouldAutoHideFromFeed() && !protectedSignal && value <= -3 + sensitivity) label(post, value);
   }
 
   function scan(root = document) {
-    if (!canScanCurrentPage()) return;
+    if (!canScanCurrentPage() && !canReadCurrentPage()) return;
     // Mutation callbacks can hand us the post card itself rather than its
     // parent. querySelectorAll only searches descendants, so inspect the root
     // before looking through its children.
@@ -816,16 +828,26 @@
     return enabled && isCurrentSiteEnabled() && isXHomeTimeline();
   }
 
+  function canReadCurrentPage() {
+    return autoReviewEnabled && isCurrentSiteEnabled() && isXHomeTimeline();
+  }
+
+  function shouldAutoHideFromFeed() {
+    return !autoReviewEnabled || !readerKeepFeedVisible;
+  }
+
   function clearInactiveSiteUi() {
     clearCurrentSite();
   }
 
-  chrome.storage.local.get({ enabled: true, linkedInEnabled: true, xEnabled: true }, (settings) => {
+  chrome.storage.local.get({ enabled: true, linkedInEnabled: true, xEnabled: true, autoReviewEnabled: true, readerKeepFeedVisible: true }, (settings) => {
     const saved = settings.enabled;
     enabled = saved;
     linkedInEnabled = settings.linkedInEnabled;
     xEnabled = settings.xEnabled;
-    if (canScanCurrentPage()) {
+    autoReviewEnabled = settings.autoReviewEnabled;
+    readerKeepFeedVisible = settings.readerKeepFeedVisible;
+    if (canScanCurrentPage() || canReadCurrentPage()) {
       addStatus();
       scan();
     } else {
@@ -845,8 +867,10 @@
     if (changes.enabled) enabled = changes.enabled.newValue;
     if (changes.linkedInEnabled) linkedInEnabled = changes.linkedInEnabled.newValue;
     if (changes.xEnabled) xEnabled = changes.xEnabled.newValue;
+    if (changes.autoReviewEnabled) autoReviewEnabled = changes.autoReviewEnabled.newValue;
+    if (changes.readerKeepFeedVisible) readerKeepFeedVisible = changes.readerKeepFeedVisible.newValue;
     if (!changes.enabled && !changes.linkedInEnabled && !changes.xEnabled) return;
-    if (!canScanCurrentPage()) {
+    if (!canScanCurrentPage() && !canReadCurrentPage()) {
       clearInactiveSiteUi();
     } else {
       clearCurrentSite();
