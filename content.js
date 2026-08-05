@@ -389,6 +389,14 @@
 
   const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
+  function reportReviewStatus(state, message) {
+    fetch("http://127.0.0.1:5050/api/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state, message })
+    }).catch(() => undefined);
+  }
+
   async function collectFeedForReview() {
     if (reviewCollectionRunning || !canScanCurrentPage()) return { count: 0 };
     const { autoReviewEnabled = true, reviewLimit = 50 } = await chrome.storage.local.get({ autoReviewEnabled: true, reviewLimit: 50 });
@@ -400,6 +408,7 @@
     const found = new Map();
     const capture = () => collectRenderedReviewPosts(limit).forEach((record) => found.set(record.source_id, record));
     try {
+      reportReviewStatus("reading", `Reading your feed — 0 of ${limit} posts collected.`);
       capture();
       let stalledPasses = 0;
       let previousY = window.scrollY;
@@ -408,6 +417,7 @@
         window.scrollBy({ top: Math.max(620, Math.round(window.innerHeight * 0.82)), left: 0, behavior: "auto" });
         await wait(1050);
         capture();
+        reportReviewStatus("reading", `Reading your feed — ${Math.min(found.size, limit)} of ${limit} posts collected.`);
         if (window.scrollY === previousY || window.scrollY + window.innerHeight >= page.scrollHeight - 4) stalledPasses += 1;
         else stalledPasses = 0;
         previousY = window.scrollY;
@@ -416,7 +426,11 @@
       await wait(250);
       const records = [...found.values()].slice(0, limit);
       if (!records.length) throw new Error("No feed posts could be read.");
+      reportReviewStatus("ranking", `Ranking ${records.length} collected posts for useful signal…`);
       return await sendVisibleFeedToReview(records);
+    } catch (error) {
+      reportReviewStatus("waiting", `Waiting for a readable Arc feed: ${error.message}`);
+      throw error;
     } finally {
       reviewCollectionRunning = false;
       lastReviewCollectionAt = Date.now();
