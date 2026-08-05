@@ -20,6 +20,8 @@
   let authorPreferences = {};
   let reviewSyncTimer;
   let lastReviewSignature = "";
+  let reviewCollectionRunning = false;
+  let lastReviewCollectionAt = 0;
 
   // X installs delegated tweet handlers above the post itself. Intercept our
   // own actions at the window capture phase, before those handlers receive the
@@ -357,40 +359,79 @@
     };
   }
 
-  async function sendVisibleFeedToReview() {
-    if (!canScanCurrentPage()) throw new Error("Open an enabled LinkedIn feed or X Home timeline first.");
-    const isXPost = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
-    const selector = isXPost
+  function reviewPostSelector() {
+    return location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com")
       ? "article[data-testid='tweet']"
       : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update'], [aria-label='Feed post']";
+  }
+
+  function collectRenderedReviewPosts(limit = 50) {
     const seen = new Set();
-    const posts = [...document.querySelectorAll(selector)].map(reviewRecordFor).filter((record) => {
+    return [...document.querySelectorAll(reviewPostSelector())].map(reviewRecordFor).filter((record) => {
       if (!record || seen.has(record.source_id)) return false;
       seen.add(record.source_id);
       return true;
-    }).slice(0, 50);
-    if (!posts.length) throw new Error("No readable posts are loaded yet.");
+    }).slice(0, limit);
+  }
+
+  async function sendVisibleFeedToReview(records = collectRenderedReviewPosts()) {
+    if (!canScanCurrentPage()) throw new Error("Open an enabled LinkedIn feed or X Home timeline first.");
+    if (!records.length) throw new Error("No readable posts are loaded yet.");
     const response = await fetch("http://127.0.0.1:5050/api/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ posts })
+      body: JSON.stringify({ posts: records })
     });
     if (!response.ok) throw new Error("Local Review app is not running on port 5050.");
     const result = await response.json();
-    return { count: result.imported || posts.length };
+    return { count: result.imported || records.length };
+  }
+
+  const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+  async function collectFeedForReview() {
+    if (reviewCollectionRunning || !canScanCurrentPage()) return { count: 0 };
+    const { autoReviewEnabled = true, reviewLimit = 50 } = await chrome.storage.local.get({ autoReviewEnabled: true, reviewLimit: 50 });
+    if (!autoReviewEnabled) return { count: 0 };
+    reviewCollectionRunning = true;
+    const limit = [50, 100].includes(Number(reviewLimit)) ? Number(reviewLimit) : 50;
+    const page = document.scrollingElement || document.documentElement;
+    const startingY = window.scrollY;
+    const found = new Map();
+    const capture = () => collectRenderedReviewPosts(limit).forEach((record) => found.set(record.source_id, record));
+    try {
+      capture();
+      let stalledPasses = 0;
+      let previousY = window.scrollY;
+      const maxPasses = limit === 100 ? 36 : 20;
+      for (let pass = 0; found.size < limit && pass < maxPasses && stalledPasses < 3; pass += 1) {
+        window.scrollBy({ top: Math.max(620, Math.round(window.innerHeight * 0.82)), left: 0, behavior: "auto" });
+        await wait(1050);
+        capture();
+        if (window.scrollY === previousY || window.scrollY + window.innerHeight >= page.scrollHeight - 4) stalledPasses += 1;
+        else stalledPasses = 0;
+        previousY = window.scrollY;
+      }
+      window.scrollTo({ top: startingY, left: 0, behavior: "auto" });
+      await wait(250);
+      const records = [...found.values()].slice(0, limit);
+      if (!records.length) throw new Error("No feed posts could be read.");
+      return await sendVisibleFeedToReview(records);
+    } finally {
+      reviewCollectionRunning = false;
+      lastReviewCollectionAt = Date.now();
+    }
   }
 
   function scheduleAutomaticReviewSync() {
-    if (reviewSyncTimer || !canScanCurrentPage()) return;
+    if (reviewSyncTimer || reviewCollectionRunning || !canScanCurrentPage() || Date.now() - lastReviewCollectionAt < 300000) return;
     reviewSyncTimer = setTimeout(async () => {
       reviewSyncTimer = undefined;
       try {
-        const isXPost = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
-        const selector = isXPost ? "article[data-testid='tweet']" : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update'], [aria-label='Feed post']";
-        const signature = [...document.querySelectorAll(selector)].map((post) => postBodyText(post).slice(0, 120)).filter(Boolean).join("|");
+        const signature = collectRenderedReviewPosts().map((post) => post.source_id).join("|");
         if (!signature || signature === lastReviewSignature) return;
         lastReviewSignature = signature;
-        await sendVisibleFeedToReview();
+        await collectFeedForReview();
       } catch (_error) {
         // The review app is optional: in-feed filtering remains fully local.
       }
@@ -801,8 +842,9 @@
     updateStatus();
   });
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type !== "send-to-review") return;
-    sendVisibleFeedToReview()
+    if (message?.type !== "send-to-review" && message?.type !== "collect-for-review") return;
+    const task = message.type === "collect-for-review" ? collectFeedForReview() : sendVisibleFeedToReview();
+    task
       .then((result) => sendResponse(result))
       .catch((error) => sendResponse({ error: error.message || "Could not send posts to local Review." }));
     return true;

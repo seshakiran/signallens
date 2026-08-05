@@ -19,8 +19,9 @@
             <div class="metric"><strong id="scannedCount">0</strong><span>posts assessed</span></div>
             <div class="metric"><strong id="filteredCount">0</strong><span>posts filtered</span></div>
           </section>
-          <button id="sendToReview" class="primary-action" type="button">Send visible feed to Review <span>→</span></button>
-          <p id="reviewStatus" class="gemma-status">Sends up to 50 visible posts locally to SignalLens Review.</p>
+          <section class="review-automation" aria-label="Local reader automation"><label class="switch"><input id="autoReviewEnabled" type="checkbox"><span>Automatically build my local reader</span></label><label class="review-limit">Fetch<select id="reviewLimit"><option value="50">50 posts</option><option value="100">100 posts</option></select> per sweep</label></section>
+          <button id="sendToReview" class="primary-action" type="button">Refresh local reader now <span>→</span></button>
+          <p id="reviewStatus" class="gemma-status">SignalLens sweeps your feed automatically and restores your place.</p>
         </section>
         <section class="rules card">
           <h2>How it decides</h2>
