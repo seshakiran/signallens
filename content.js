@@ -362,7 +362,7 @@
     const isXPost = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
     const selector = isXPost
       ? "article[data-testid='tweet']"
-      : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update']";
+      : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update'], [aria-label='Feed post']";
     const seen = new Set();
     const posts = [...document.querySelectorAll(selector)].map(reviewRecordFor).filter((record) => {
       if (!record || seen.has(record.source_id)) return false;
@@ -386,7 +386,7 @@
       reviewSyncTimer = undefined;
       try {
         const isXPost = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
-        const selector = isXPost ? "article[data-testid='tweet']" : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update']";
+        const selector = isXPost ? "article[data-testid='tweet']" : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update'], [aria-label='Feed post']";
         const signature = [...document.querySelectorAll(selector)].map((post) => postBodyText(post).slice(0, 120)).filter(Boolean).join("|");
         if (!signature || signature === lastReviewSignature) return;
         lastReviewSignature = signature;
