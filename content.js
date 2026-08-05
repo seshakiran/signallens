@@ -18,6 +18,8 @@
   let interestTopics = [];
   let sensitivity = 0;
   let authorPreferences = {};
+  let reviewSyncTimer;
+  let lastReviewSignature = "";
 
   // X installs delegated tweet handlers above the post itself. Intercept our
   // own actions at the window capture phase, before those handlers receive the
@@ -350,6 +352,7 @@
       author_id: author?.id || "",
       url: link?.href || "",
       text,
+      signal_score: score(text, post),
       collected_at: new Date().toISOString()
     };
   }
@@ -375,6 +378,23 @@
     if (!response.ok) throw new Error("Local Review app is not running on port 5050.");
     const result = await response.json();
     return { count: result.imported || posts.length };
+  }
+
+  function scheduleAutomaticReviewSync() {
+    if (reviewSyncTimer || !canScanCurrentPage()) return;
+    reviewSyncTimer = setTimeout(async () => {
+      reviewSyncTimer = undefined;
+      try {
+        const isXPost = location.hostname.endsWith("x.com") || location.hostname.endsWith("twitter.com");
+        const selector = isXPost ? "article[data-testid='tweet']" : "div.feed-shared-update-v2, [data-urn^='urn:li:activity:'], [data-view-name='feed-full-update']";
+        const signature = [...document.querySelectorAll(selector)].map((post) => postBodyText(post).slice(0, 120)).filter(Boolean).join("|");
+        if (!signature || signature === lastReviewSignature) return;
+        lastReviewSignature = signature;
+        await sendVisibleFeedToReview();
+      } catch (_error) {
+        // The review app is optional: in-feed filtering remains fully local.
+      }
+    }, 1800);
   }
 
   function recordFeedback(kind, features, post) {
@@ -708,6 +728,7 @@
         recordAssessment(heading.parentElement || heading, heading.parentElement?.innerText || marker);
       }
     });
+    scheduleAutomaticReviewSync();
   }
 
   let rescanTimer;
