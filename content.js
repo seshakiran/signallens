@@ -25,6 +25,10 @@
   let autoReviewEnabled = true;
   let readerKeepFeedVisible = true;
 
+  function isBackgroundCollector() {
+    return new URLSearchParams(location.search).has("signallens-reader");
+  }
+
   // X installs delegated tweet handlers above the post itself. Intercept our
   // own actions at the window capture phase, before those handlers receive the
   // event. Elements carry a closure-backed handler rather than relying on X to
@@ -439,9 +443,12 @@
       const records = [...found.values()].slice(0, limit);
       if (!records.length) throw new Error("No feed posts could be read.");
       reportReviewStatus("ranking", `Ranking ${records.length} collected posts for useful signal…`);
-      return await sendVisibleFeedToReview(records);
+      const result = await sendVisibleFeedToReview(records);
+      if (isBackgroundCollector()) chrome.runtime.sendMessage({ type: "review-collection-finished" });
+      return result;
     } catch (error) {
       reportReviewStatus("waiting", `Waiting for a readable Arc feed: ${error.message}`);
+      if (isBackgroundCollector()) chrome.runtime.sendMessage({ type: "review-collection-finished" });
       throw error;
     } finally {
       reviewCollectionRunning = false;
@@ -454,10 +461,10 @@
     reviewSyncTimer = setTimeout(async () => {
       reviewSyncTimer = undefined;
       try {
-        const signature = collectRenderedReviewPosts().map((post) => post.source_id).join("|");
-        if (!signature || signature === lastReviewSignature) return;
-        lastReviewSignature = signature;
-        await collectFeedForReview();
+        if (isBackgroundCollector()) return;
+        lastReviewSignature = location.href;
+        lastReviewCollectionAt = Date.now();
+        chrome.runtime.sendMessage({ type: "schedule-review-collection" });
       } catch (_error) {
         // The review app is optional: in-feed filtering remains fully local.
       }
@@ -850,6 +857,7 @@
     if (canScanCurrentPage() || canReadCurrentPage()) {
       addStatus();
       scan();
+      if (isBackgroundCollector()) chrome.runtime.sendMessage({ type: "collector-ready" });
     } else {
       clearInactiveSiteUi();
     }

@@ -3,6 +3,8 @@ const MODEL = "gemma4:e4b";
 let assessmentQueue = Promise.resolve();
 let bookmarkQueue = Promise.resolve();
 let gemmaQueue = Promise.resolve();
+let reviewCollectorTabId = null;
+let lastReviewCollectionStartedAt = 0;
 
 function resetAssessmentSession() {
   return Promise.all([
@@ -15,6 +17,23 @@ chrome.runtime.onInstalled.addListener(() => { resetAssessmentSession(); });
 chrome.runtime.onStartup.addListener(() => { resetAssessmentSession(); });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === 'schedule-review-collection') {
+    scheduleReviewCollection().then(sendResponse).catch((error) => sendResponse({ started: false, error: error.message }));
+    return true;
+  }
+  if (message.type === 'collector-ready') {
+    if (_sender.tab?.id === reviewCollectorTabId) {
+      setTimeout(() => chrome.tabs.sendMessage(reviewCollectorTabId, { type: 'collect-for-review', backgroundCollector: true }), 1600);
+    }
+    return;
+  }
+  if (message.type === 'review-collection-finished') {
+    if (_sender.tab?.id === reviewCollectorTabId) {
+      chrome.tabs.remove(reviewCollectorTabId).catch(() => undefined);
+      reviewCollectorTabId = null;
+    }
+    return;
+  }
   if (message.type === 'save-bookmark') {
     saveBookmark(message.bookmark).then(sendResponse).catch((error) => sendResponse({ saved: false, error: error.message }));
     return true;
@@ -37,6 +56,19 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   classifyWithGemma(message.text).then(sendResponse).catch((error) => sendResponse({ error: error.message }));
   return true;
 });
+
+async function scheduleReviewCollection() {
+  if (reviewCollectorTabId || Date.now() - lastReviewCollectionStartedAt < 300000) return { started: false, reason: 'already scheduled' };
+  lastReviewCollectionStartedAt = Date.now();
+  const tab = await chrome.tabs.create({ url: 'https://www.linkedin.com/feed/?signallens-reader=1', active: false });
+  reviewCollectorTabId = tab.id;
+  setTimeout(() => {
+    if (reviewCollectorTabId !== tab.id) return;
+    chrome.tabs.remove(tab.id).catch(() => undefined);
+    reviewCollectorTabId = null;
+  }, 120000);
+  return { started: true };
+}
 
 async function classifyWithGemma(text) {
   const { llmConfig = { provider: 'ollama', endpoint: OLLAMA_URLS[0], model: MODEL, apiKey: '' } } = await chrome.storage.local.get({ llmConfig: { provider: 'ollama', endpoint: OLLAMA_URLS[0], model: MODEL, apiKey: '' } });

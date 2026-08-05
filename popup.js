@@ -202,10 +202,9 @@ bookmarkItems.addEventListener('click', (event) => {
 });
 enabled.addEventListener('change', () => chrome.storage.local.set({ enabled: enabled.checked }));
 sendToReview.addEventListener('click', async () => {
-  reviewStatus.textContent = `Reading the top ${reviewLimit.value} posts…`;
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  chrome.tabs.sendMessage(tab.id, { type: 'collect-for-review' }, (result) => {
-    reviewStatus.textContent = chrome.runtime.lastError?.message || result?.error || `Sent ${result?.count || 0} posts to local Review.`;
+  reviewStatus.textContent = `Starting a background sweep of ${reviewLimit.value} posts…`;
+  chrome.runtime.sendMessage({ type: 'schedule-review-collection' }, (result) => {
+    reviewStatus.textContent = chrome.runtime.lastError?.message || result?.error || (result?.started ? 'Background reader started.' : 'A reader sweep is already scheduled.');
   });
 });
 autoReviewEnabled.addEventListener('change', () => chrome.storage.local.set({ autoReviewEnabled: autoReviewEnabled.checked }));
